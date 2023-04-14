@@ -1,0 +1,144 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+js {
+  function intEventParam(parameter) {
+    return '(SELECT ep.value.int_value FROM UNNEST(event_params) ep WHERE ep.key = "'
+    + parameter + '" LIMIT 1)';
+  }
+  function stringEventParam(parameter) {
+    return '(SELECT ep.value.string_value FROM UNNEST(event_params) ep WHERE ep.key = "'
+    + parameter + '" LIMIT 1)';
+  }
+  function stripNotSet(expression, columnName) {
+    if(typeof columnName === 'undefined') {
+      columnName = expression;
+    }
+    return 'CASE WHEN ' + expression + '="(not set)" THEN "" ELSE ' + expression + ' END as ' + columnName
+  }
+  function notNullString(column) {
+    return 'COALESCE(' + column + ', "") as ' + column;
+  }
+}
+
+config { 
+  type: "view",
+  schema: functions.baseSchema("ga4"),
+  columns: docs.ga4_events,
+  description: "View into GA4 exported tables. Not be used outside of the Dataform transformation jobs.",
+  tags: ['ga4']
+}
+
+-- TODO: not clear if the select from subselect is needed here.
+SELECT
+  ${notNullString('traffic_source_medium')},
+  ${notNullString('traffic_source_name')},
+  ${notNullString('traffic_source')},
+  ${stripNotSet('continent')}, 
+  ${stripNotSet('subcontinent')},
+  ${stripNotSet('country')},
+  ${stripNotSet('region')},
+  ${stripNotSet('city')},
+  ${stripNotSet('metro')},
+  ${notNullString('device_category')},
+  ${notNullString('device_mobile_brand_name')},
+  ${notNullString('device_mobile_model_name')},
+  ${notNullString('device_model')},
+  ${notNullString('device_os')},
+  ${notNullString('device_os_version')},
+  ${notNullString('device_web_browser')},
+  ${notNullString('device_web_browser_version')},
+  SPLIT(device_web_browser_version, '.')[OFFSET(0)] as normalized_device_web_browser_version,
+  COALESCE(app_store, "") as app_store,
+  COALESCE(app_version, "") as app_version,
+  TIMESTAMP_MICROS(event_timestamp) as event_timestamp,
+  event_name,
+  platform,
+  stream_id,
+  user_pseudo_id,
+  user_id,
+  language,
+  left(language, 2) as normalized_language,
+  COALESCE(device_advertising_id, "") device_advertising_id,
+  ga_session_id,
+  ga_session_number,
+  CAST(session_engaged_during_event AS BOOL) as session_engaged_during_event,
+  engagement_time_msec,
+  page_location,
+  -- TODO: add unit test for the regexp extraction including the case where there is an anchor at the end of the URL
+  CASE WHEN page_location IS NULL THEN NULL ELSE REGEXP_EXTRACT(page_location,".*[?&]gclid=([^&#]+)") END gclid, 
+  page_title,
+  page_referrer,
+  percent_scrolled,
+  outbound_click_url,
+  ecommerce,
+  user_ltv_revenue,
+  user_ltv_currency,
+  TIMESTAMP_MICROS(user_first_touch_timestamp) user_first_touch_timestamp,
+  items,
+  table_suffix
+FROM (
+SELECT
+    LOWER(traffic_source.medium) as traffic_source_medium, 
+    LOWER(traffic_source.name) as traffic_source_name, 
+    LOWER(traffic_source.source) as traffic_source, 
+    geo.continent as continent,
+    geo.sub_continent as subcontinent,
+    geo.country as country,
+    geo.region as region,
+    geo.city as city,
+    geo.metro as metro,
+    device.category as device_category,
+    device.mobile_brand_name as device_mobile_brand_name,
+    device.mobile_model_name as device_mobile_model_name,
+    device.mobile_marketing_name as device_model,
+    device.operating_system as device_os,
+    device.operating_system_version as device_os_version,
+    device.web_info.browser as device_web_browser,
+    device.web_info.browser_version as device_web_browser_version,
+    app_info.install_store as app_store,
+    app_info.version as app_version,
+    event_timestamp,
+    event_name,
+    platform,
+    stream_id,
+    user_id,
+    user_pseudo_id,
+    device.language as language,
+    device.advertising_id as device_advertising_id,
+    STRUCT (
+      ${stripNotSet('ecommerce.transaction_id', 'transaction_id')},
+      CAST(ecommerce.purchase_revenue_in_usd AS NUMERIC) as purchase_revenue_in_usd,
+      ecommerce.total_item_quantity as total_item_quantity,
+      ecommerce.refund_value_in_usd as refund_value_in_usd
+    ) ecommerce,
+    ${intEventParam("ga_session_id")} as ga_session_id,
+    ${intEventParam("ga_session_number")} as ga_session_number,
+    (SELECT COALESCE(ep.value.int_value, CAST(ep.value.string_value AS INT64)) FROM UNNEST(event_params) ep WHERE ep.key = "session_engaged" LIMIT 1) as session_engaged_during_event,
+    ${intEventParam("engagement_time_msec")} as engagement_time_msec,
+    ${stringEventParam("page_location")} as page_location,
+    ${stringEventParam("page_title")} as page_title,
+    ${stringEventParam("page_referrer")} as page_referrer,
+    ${intEventParam("percent_scrolled")} as percent_scrolled,
+    ${stringEventParam("link_url")} as outbound_click_url,
+    CAST(user_ltv.revenue AS NUMERIC) as user_ltv_revenue,
+    user_ltv.currency as user_ltv_currency,
+    user_first_touch_timestamp,
+    items,
+    _TABLE_SUFFIX as table_suffix
+FROM ${ref('events' + dataform.projectConfig.vars.ga4_export_table_suffix)}
+  -- Exclude extra day exports 
+  WHERE NOT STARTS_WITH(_TABLE_SUFFIX, "intraday")
+)

@@ -1,0 +1,124 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config { 
+  type: "table",
+  schema: functions.baseSchema("ads"),
+  dependencies: [ "update_dim_ads"],
+  tags: ["ads"]
+}
+
+WITH landing AS (
+  SELECT
+    dim_ads.ad_id as ad_id,
+    l.date_id as date_id,
+    l.device as device,
+    #TODO: Add account_status field
+    "" as account_status,
+    c.campaign_status as campaign_status,
+    ag.adgroup_status as adgroup_status,
+    a.ad_status as ad_status,
+    l.impressions as impressions,
+    l.clicks as clicks,
+    l.cost as cost
+  FROM ${ref("ad_stats")} l
+  LEFT JOIN (
+    SELECT DISTINCT
+      ad_system,
+      ad_id, 
+      account_id,
+      campaign_id,
+      adgroup_id,
+      creative_id
+    FROM ${ref("dim_ads")}
+    WHERE current_flag = TRUE
+  ) dim_ads USING (ad_system, account_id, campaign_id, adgroup_id, creative_id)
+  LEFT JOIN ${ref("campaign")} c USING (ad_system, account_id, campaign_id)
+  LEFT JOIN ${ref("adgroup")} ag USING (ad_system, account_id, campaign_id, adgroup_id)
+  LEFT JOIN ${ref("ad")} a USING (ad_system, account_id, campaign_id, adgroup_id, creative_id)
+),
+warehouse AS (
+  # Rows from Warehouse
+  SELECT
+    ad_performance_id,
+    date_id,
+    ad_id,
+    account_status,
+    campaign_status,
+    adgroup_status,
+    ad_status,
+    device,
+    impressions,
+    clicks,
+    cost
+  FROM ${ref("fact_ad_performance_daily")}
+)
+SELECT 
+  l, w,
+  CASE
+    WHEN w.ad_performance_id IS NULL THEN "APPEND"
+    WHEN NOT (
+      l.account_status = w.account_status AND
+      l.campaign_status = w.campaign_status AND
+      l.adgroup_status = w.adgroup_status AND
+      l.ad_status = w.ad_status AND
+      l.impressions = w.impressions AND
+      l.clicks = w.clicks AND
+      l.cost = w.cost
+    )
+    THEN "MODIFY"
+    ELSE "NO_ACTION"
+  END disposition,
+  CURRENT_TIMESTAMP() AS exec_timestamp
+FROM landing l
+LEFT JOIN warehouse w ON
+  l.ad_id = w.ad_id AND
+  l.date_id = w.date_id AND
+  l.device = w.device 
+
+
+post_operations {
+  # Update older versions of the fact
+  UPDATE ${ref("fact_ad_performance_daily")} f
+  SET 
+    account_status = t.l.account_status,
+    campaign_status = t.l.campaign_status,
+    adgroup_status = t.l.adgroup_status,
+    ad_status = t.l.ad_status,
+    impressions = t.l.impressions,
+    clicks = t.l.clicks,
+    cost = t.l.cost
+  FROM ${self()} t
+  WHERE 
+    f.ad_performance_id = t.w.ad_performance_id AND
+    t.disposition = "MODIFY"
+---
+# Insert the new versions of the fact
+  INSERT INTO ${ref("fact_ad_performance_daily")}
+  SELECT 
+    GENERATE_UUID() as ad_performance_id,
+    l.date_id as date_id,
+    l.ad_id as ad_id,
+    l.device as device,
+    l.account_status as account_status,
+    l.campaign_status as campaign_status,
+    l.adgroup_status as adgroup_status,
+    l.ad_status as ad_status,
+    l.impressions as impressions,
+    l.clicks as clicks,
+    l.cost as cost
+  FROM ${self()}
+  WHERE disposition IN ("APPEND")
+}

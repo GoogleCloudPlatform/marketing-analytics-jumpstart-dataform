@@ -1,0 +1,39 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {  
+  type: "view",
+  schema: functions.productSchema("ga4"),
+  description: "View to show unique pageview metrics by ISO Year - ISO Week.",
+  tags: ['ga4','dashboard']
+}
+WITH
+  unique_pageviews AS(
+  SELECT
+    COUNT(*) AS unique_pageview_count,
+    ${sql.isoYearWeekColumn("event_date")} AS year_week
+  FROM
+    ${ref({schema:functions.productSchema("ga4"),name: "unique_page_views"})}
+  GROUP BY
+    year_week
+)
+SELECT
+  year_week,
+  unique_pageview_count,
+  ${sql.percentChangeColumn("unique_pageview_count","year_week")} AS unique_pageview_count_change_percent
+FROM
+  unique_pageviews
+ORDER BY
+  year_week desc

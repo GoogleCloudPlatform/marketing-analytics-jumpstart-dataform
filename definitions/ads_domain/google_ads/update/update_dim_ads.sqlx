@@ -1,0 +1,146 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config { 
+  type: "table",
+  schema: functions.baseSchema("ads"),
+  tags: ["ads"]
+} 
+
+WITH landing AS (
+  SELECT DISTINCT
+    ad_system,
+    CAST(ads.account_id AS STRING) as account_id,
+    CAST(ads.campaign_id AS STRING) as campaign_id,
+    CAST(ads.adgroup_id AS STRING) as adgroup_id,
+    CAST(ads.creative_id AS STRING) as creative_id,
+
+    account.account_name as account_name,
+    campaign.campaign_name as campaign_name,
+    adgroup.adgroup_name as adgroup_name,
+
+    account.currency as currency,
+    account.timezone as timezone,
+
+    #https://developers.google.com/adwords/api/docs/appendix/reports/adgroup-performance-report#adgrouptype
+    CASE
+      WHEN adgroup.adgroup_type = "UNKNOWN" THEN "UNKNOWN"
+      WHEN adgroup.adgroup_type = "SEARCH_STANDARD" THEN "SEARCH"
+      WHEN adgroup.adgroup_type = "SEARCH_DYNAMIC_ADS" THEN "SEARCH"
+      WHEN adgroup.adgroup_type = "DISPLAY_STANDARD" THEN "DISPLAY"
+      WHEN adgroup.adgroup_type = "DISPLAY_ENGAGEMENT" THEN "DISPLAY"
+      WHEN adgroup.adgroup_type = "SHOPPING_PRODUCT_ADS" THEN "SHOPPING"
+      WHEN adgroup.adgroup_type = "SHOPPING_SHOWCASE_ADS" THEN "SHOPPING"
+      WHEN adgroup.adgroup_type = "SHOPPING_GOAL_OPTIMIZED_ADS" THEN "SHOPPING"
+      WHEN adgroup.adgroup_type = "VIDEO_TRUE_VIEW_IN_STREAM" THEN "VIDEO"
+      WHEN adgroup.adgroup_type = "VIDEO_TRUE_VIEW_IN_DISPLAY" THEN "VIDEO"
+      WHEN adgroup.adgroup_type = "VIDEO_BUMPER" THEN "VIDEO"
+      WHEN adgroup.adgroup_type = "VIDEO_NON_SKIPPABLE_IN_STREAM" THEN "VIDEO"
+      WHEN adgroup.adgroup_type = "HOTEL_ADS" THEN "HOTEL"
+      ELSE "UNKNOWN"
+    END as ad_type,
+    ads.ad_type as ad_product
+
+  FROM ${ref("ad")} ads
+  LEFT JOIN ${ref("customer")} account USING (ad_system,account_id)
+  LEFT JOIN ${ref("campaign")} campaign USING (ad_system, account_id, campaign_id)
+  LEFT JOIN ${ref("adgroup")} adgroup USING (ad_system, account_id, campaign_id, adgroup_id)
+),
+warehouse AS (
+  # Rows from Warehouse
+  SELECT
+    ad_id,
+    ad_system,
+    ad_type,
+    ad_product,
+    account_id,
+    account_name,
+    campaign_id,
+    campaign_name,
+    adgroup_id,
+    adgroup_name,
+    creative_id,
+    currency,
+    timezone,
+    start_date,
+    start_timestamp,
+    end_date,
+    end_timestamp,
+    current_flag
+  FROM ${ref("dim_ads")}
+  WHERE current_flag = TRUE
+)
+SELECT 
+  l, w,
+  CASE
+    WHEN w.ad_id IS NULL THEN "APPEND"
+    WHEN NOT (
+      l.ad_system = w.ad_system AND
+      l.ad_type = w.ad_type AND 
+      l.ad_product = w.ad_product AND 
+      l.account_name = w.account_name AND
+      l.campaign_name = w.campaign_name AND 
+      l.adgroup_name = w.adgroup_name AND
+      l.currency = w.currency AND
+      l.timezone = w.timezone
+    )
+    THEN "MODIFY"
+    ELSE "NO_ACTION"
+  END disposition,
+  CURRENT_TIMESTAMP() AS exec_timestamp
+FROM landing l
+LEFT JOIN warehouse w ON
+  l.ad_system = w.ad_system AND
+  l.account_id = w.account_id AND
+  l.campaign_id = w.campaign_id AND
+  l.adgroup_id = w.adgroup_id AND
+  l.creative_id = w.creative_id
+
+post_operations {
+  UPDATE ${ref("dim_ads")} d
+  SET 
+    current_flag = FALSE,
+    end_timestamp = t.exec_timestamp,
+    end_date = CAST(t.exec_timestamp AS STRING FORMAT 'YYYYMMDD')
+  FROM ${self()} t
+  WHERE 
+    d.ad_id = t.w.ad_id AND
+    t.disposition = "MODIFY" AND
+    d.current_flag = TRUE 
+  ---
+  INSERT INTO ${ref("dim_ads")}
+  SELECT 
+    COALESCE(w.ad_id, GENERATE_UUID())as ad_id,
+    l.ad_system as ad_system,
+    l.ad_type as ad_type,
+    l.ad_product as ad_product,
+    l.account_id as account_id,
+    l.account_name as account_name,
+    l.campaign_id as campaign_id,
+    l.campaign_name as campaign_name,
+    l.adgroup_id as adgroup_id,
+    l.adgroup_name as adgroup_name,
+    l.creative_id as creative_id,
+    l.currency as currency,
+    l.timezone as timezone,
+
+    CAST(exec_timestamp AS STRING FORMAT 'YYYYMMDD') AS start_date,
+    exec_timestamp as start_timestamp,
+    NULL as end_timestamp,
+    NULL as end_date,
+    TRUE AS current_flag
+  FROM ${self()}
+  WHERE disposition IN ("APPEND", "MODIFY")
+}

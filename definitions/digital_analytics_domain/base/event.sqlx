@@ -1,0 +1,88 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {
+  type: "incremental",
+  schema: functions.baseSchema("ga4"),
+  description: "Event fact",
+  columns: docs.ga4_events,
+  uniqueKey: ga4.eventUniqueColumns,
+  assertions: {
+    rowConditions: [
+      'event_type = "' + ga4.eventTypeTagged + '" AND ga_session_id IS NOT NULL',
+      'event_type != "' + ga4.eventTypeTagged + '" AND ga_session_id IS NULL',
+      'IF(event_type = "' + ga4.eventTypeTagged + '", device_type_id IS NOT NULL, true)',
+      'IF(event_type = "' + ga4.eventTypeTagged + '", normalized_device_type_id IS NOT NULL, true)',
+      'IF(event_type = "' + ga4.eventTypeTagged + '", traffic_source_id IS NOT NULL, true)',
+    ]
+  },
+  bigquery: {
+    // TODO: Partionioning and clustering on this table are best estimates
+    partitionBy: "DATETIME_TRUNC(event_timestamp, DAY)",
+    clusterBy: ["ga_session_id", "user_pseudo_id", "event_name"]
+  },
+  tags: ['ga4']
+  }
+
+  SELECT
+    GENERATE_UUID() as event_id,
+    CASE 
+      WHEN ga_session_id IS NOT NULL THEN '${ga4.eventTypeTagged}'
+      WHEN event_name IN UNNEST(['predict_ltv_payer', 'predicted_top_spenders']) THEN '${ga4.eventTypePredicted}'
+      ELSE '${ga4.eventTypeCustom}' END as event_type,
+    ${ga4.eventUniqueColumns},
+    platform,
+    stream_id,
+    ga_session_number,
+    user_id as user_id,
+    t.traffic_source_id,
+    l.location_id,
+    d.device_type_id,
+    nd.normalized_device_type_id,
+    session_engaged_during_event, 
+    engagement_time_msec, 
+    page_location,
+    gclid,
+    page_referrer,
+    page_title,
+    outbound_click_url,
+    percent_scrolled,
+    ecommerce,
+    user_ltv_revenue,
+    user_ltv_currency,
+    user_first_touch_timestamp,
+    items
+  FROM ${ref("ga4_events")} source
+  LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"traffic_source")}) t  
+    USING (${ga4.trafficSourceUniqueColumns})
+  LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"location")}) l 
+    USING (${ga4.locationUniqueColumns})
+  LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"device_type")} ) d 
+    USING (${ga4.deviceUniqueColumns})
+  LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"normalized_device_type")} ) nd
+    USING (${ga4.normalizedDeviceUniqueColumns})
+    -- TODO: validate merges of events with NULL ga_session_ids won't result in duplicates
+  ${when(incremental(), `WHERE table_suffix BETWEEN '${ga4.incrementalSuffixStart()}' and '${ga4.incrementalSuffixEnd()}'
+    AND NOT EXISTS(
+    SELECT * FROM ${self()} target WHERE
+    ${sql.multiColumnEqualsClause('source', 'target', ga4.eventUniqueColumns)}
+                  )` )}
+  
+post_operations {
+  ${when(! incremental(), `ALTER TABLE ${self()} ADD PRIMARY KEY (event_id) NOT ENFORCED;` )}
+  ALTER TABLE ${self()} ADD CONSTRAINT IF NOT EXISTS 
+    fk_event_traffic_source FOREIGN KEY (traffic_source_id) 
+    REFERENCES ${ref(functions.baseSchema("ga4"),"traffic_source")}(traffic_source_id) NOT ENFORCED
+}

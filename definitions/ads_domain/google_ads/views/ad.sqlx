@@ -1,0 +1,31 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config { 
+  type: "view",
+  schema: functions.baseSchema("ads"),
+  tags: ["ads"]
+}
+SELECT DISTINCT
+  "GOOGLE_ADS" as ad_system,
+  CAST(ExternalCustomerId AS STRING) as account_id,
+  CAST(CampaignId AS STRING) as campaign_id,
+  CAST(AdGroupId AS STRING) as adgroup_id,
+  CAST(CreativeId AS STRING) as creative_id,
+  AdType as ad_type,
+  Status as ad_status
+FROM (
+${functions.buildViewUnion("ExternalCustomerId, CampaignId, AdGroupId, CreativeId, AdType, Status", "adwords", "Ad")}
+)

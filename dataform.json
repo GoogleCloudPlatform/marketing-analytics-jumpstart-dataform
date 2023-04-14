@@ -1,0 +1,16 @@
+{
+  "warehouse": "bigquery",
+  "defaultDatabase": "PROJECT_ID",
+  "defaultSchema": "marketing",
+  "assertionSchema": "marketing_assertions",
+  "defaultLocation": "US",
+  "vars": {
+    "env": "dev",
+    "ga4_export_project": "PROJECT_ID",
+    "ga4_export_dataset": "DATASET_NAME",
+    "ga4_export_table_suffix": "_*",
+    "ga4_incremental_processing_days_back": "3",
+    "ads_export_data": "[{\"project\": \"PROJECT_ID\",\"dataset\": \"DATASET_NAME\", \"table_suffix\": \"_123456\"},{\"project\": \"PROJECT_ID\",\"dataset\": \"DATASET_NAME\",\"table_suffix\": \"_34567890\"}]"
+  }
+} 
+    

@@ -1,0 +1,41 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {  
+  type: "view",
+  schema: functions.productSchema("ga4"),
+  description: "View to show average engagement per page by ISO Year - ISO Week.",
+  tags: ['ga4','dashboard']
+}
+
+WITH Event_ISO AS(
+  SELECT
+    SUM (engagement_time_secs) / COUNT(DISTINCT page) as avg_engagement_time_secs,
+    CONCAT(EXTRACT(ISOYEAR from event_date),
+      "-",
+      EXTRACT(ISOWEEK from event_date)) as year_week
+  FROM 
+    ${ref({schema:functions.productSchema("ga4"),name: "event_page"})}
+  GROUP BY
+    year_week
+)
+SELECT
+    year_week,
+    avg_engagement_time_secs,
+    ${sql.percentChangeColumn("avg_engagement_time_secs","year_week")} as avg_engagement_change_percent --Change % from previous week,
+  FROM
+    Event_ISO
+  ORDER BY
+    year_week DESC

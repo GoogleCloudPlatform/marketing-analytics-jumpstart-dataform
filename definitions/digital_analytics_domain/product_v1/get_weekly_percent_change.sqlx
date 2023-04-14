@@ -1,0 +1,64 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config { hasOutput: true,
+         schema: functions.productSchema("ga4"),
+         tags: ['ga4','dashboard'],
+         disabled: true
+}
+
+js {
+    //Const to store parsed ISO Week & Year from end date in YYYYMMDD format
+    const isoYearWeek = sql.parseIsoWeekYear("end_date","%Y%m%d")
+}
+
+CREATE OR REPLACE FUNCTION ${self()}(metric STRING, end_date STRING)
+RETURNS FLOAT64 AS
+(
+    CASE 
+    WHEN metric in ("Session_Count", "Session_Engagement") THEN
+        (
+            SELECT
+                CASE
+                    WHEN metric = "Session_Count" THEN count_change_percent
+                    WHEN metric = "Session_Engagement" THEN avg_engagement_change_percent
+                END AS Metric
+            FROM
+                ${ref({schema:functions.productSchema("ga4"),name: "session_weekly_metrics"})}
+            WHERE year_week = ${isoYearWeek}
+        )
+
+    WHEN metric in ("Event_Engagement") THEN
+    (
+        SELECT
+            avg_engagement_change_percent AS Metric
+        FROM
+            ${ref({schema:functions.productSchema("ga4"),name: "event_weekly_metrics"})}
+        WHERE year_week = ${isoYearWeek}
+
+    )
+
+    WHEN metric in ("Unique_Pageview_Count") THEN
+    (
+        SELECT unique_pageview_count_change_percent AS Metric
+        FROM
+            ${ref({schema:functions.productSchema("ga4"),name: "pageview_weekly_metrics"})}
+        WHERE year_week = ${isoYearWeek}
+        
+    )
+    END
+) OPTIONS (
+    description = "Takes strings for metric and end date (YYYYMMDD) as parameters. Retrieves the corresponding metric from the appropriate aggregiation table. Function will always return a single value."
+)

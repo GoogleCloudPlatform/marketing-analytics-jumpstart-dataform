@@ -1,0 +1,45 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {  
+  type: "view",
+  schema: functions.productSchema("ga4"),
+  description: "A list of pages by session.",
+  tags: ['ga4','dashboard']
+}
+
+SELECT
+  event.page_title,
+  event.ga_session_id,
+  event.user_pseudo_id,
+  event.event_date,
+  SUM(COALESCE(event.engagement_time_msec,0)) / 1000 AS total_engagement_time_sec,
+  session.session_engaged
+FROM
+  ${ref({schema:functions.productSchema("ga4"),name: "event"})} event
+INNER JOIN
+  ${ref({schema:functions.productSchema("ga4"),name: "session"})} session
+ON
+  event.ga_session_id = session.ga_session_id
+  AND event.user_pseudo_id = session.user_pseudo_id
+WHERE
+  event.ga_session_id IS NOT NULL --only want events that have a session
+  AND event.page_location IS NOT NULL
+GROUP BY
+  page_title,
+  ga_session_id,
+  user_pseudo_id,
+  event_date,
+  session_engaged
