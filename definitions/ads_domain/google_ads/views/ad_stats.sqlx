@@ -18,20 +18,42 @@ config {
   schema: functions.baseSchema("ads"),
   tags: ["ads"]
 }
+js {
+  const lookbackDays = dataform.projectConfig.vars.ads_metrics_lookback_days;
+
+  const columns = 
+    `ad_group_ad_ad_id,
+    customer_id,
+    campaign_id,
+    ad_group_ad_ad_group,
+    segments_date,
+    segments_device,
+    metrics_impressions,
+    metrics_clicks,
+    metrics_cost_micros`;
+
+  const union = functions.buildViewUnion(columns, "ads", "p_ads_AdBasicStats", lookbackDays)
+}
 SELECT
-  "GOOGLE_ADS" as ad_system,
-  CAST(ExternalCustomerId AS STRING) as account_id,
-  CAST(CampaignId AS STRING) as campaign_id,
-  CAST(AdGroupId AS STRING) as adgroup_id,
-  CAST(CreativeId AS STRING) as creative_id,
-  CAST(CAST(Date AS STRING FORMAT 'YYYYMMDD') AS INT64) as date_id,
-  Device as device,
-  SUM(Impressions) as impressions,
-  SUM(Clicks) as clicks,
-  CAST(SUM(Cost) as NUMERIC) as cost  --cast to numeric for currency
+  "GOOGLE_ADS" AS ad_system,
+  CAST(ad_group_ad_ad_id AS STRING) AS creative_id,
+  CAST(customer_id AS STRING) as account_id,
+  CAST(campaign_id AS STRING) as campaign_id,
+  SPLIT(ad_group_ad_ad_group,'/')[ORDINAL(4)] AS adgroup_id, --extract ad_group_id from ad_group string
+  CAST(CAST(segments_date AS STRING FORMAT 'YYYYMMDD') AS INT64) as date_id,
+  segments_device AS device,
+  SUM(metrics_impressions) AS impressions,
+  SUM(metrics_clicks) AS clicks,
+  SUM(CAST (metrics_cost_micros AS NUMERIC)) AS cost  --cast to numeric for currency
 FROM (
   SELECT DISTINCT * FROM (
-${functions.buildViewUnion("ExternalCustomerId,CampaignId,AdGroupId,CreativeId,Date,Device,Impressions,Clicks,Cost,Ctr", "adwords", "p_AdStats", 365)}
+${union}
   )
 )
-GROUP BY 1,2,3,4,5,6,7
+GROUP BY 
+  creative_id,
+  account_id,
+  campaign_id,
+  adgroup_id,
+  date_id,
+  device

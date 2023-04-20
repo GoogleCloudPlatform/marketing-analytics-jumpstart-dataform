@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-const adwords = JSON.parse(dataform.projectConfig.vars.ads_export_data);
+const ads = JSON.parse(dataform.projectConfig.vars.ads_export_data);
 
-const settings = { "adwords": adwords};
+const settings = { "ads": ads};
 
 module.exports = { settings };

@@ -18,14 +18,25 @@ config {
   schema: functions.baseSchema("ads"),
   tags: ["ads"]
 }
+js {
+  const columns =
+    `customer_id,
+    campaign_id,
+    ad_group_id,
+    ad_group_name,
+    ad_group_type,
+    ad_group_status`;
+
+  const union = functions.buildViewUnion(columns, "ads", "p_ads_AdGroup");
+}
 SELECT DISTINCT
-  "GOOGLE_ADS" as ad_system,
-  CAST(ExternalCustomerId AS STRING) as account_id,
-  CAST(CampaignId AS STRING) as campaign_id,
-  CAST(AdGroupId AS STRING) as adgroup_id,
-  AdGroupName as adgroup_name,
-  AdGroupType as adgroup_type,
-  AdGroupStatus as adgroup_status
+  "GOOGLE_ADS" AS ad_system,
+  CAST(customer_id AS STRING) AS account_id,
+  CAST(campaign_id AS STRING) AS campaign_id,
+  CAST(ad_group_id AS STRING) AS adgroup_id,
+  ad_group_name AS adgroup_name,
+  ad_group_type AS adgroup_type,
+  ad_group_status AS adgroup_status
 FROM (
-${functions.buildViewUnion("ExternalCustomerId,CampaignId,AdGroupId, AdGroupName, AdGroupType, AdGroupStatus", "adwords", "AdGroup")}
+${union}
 )
