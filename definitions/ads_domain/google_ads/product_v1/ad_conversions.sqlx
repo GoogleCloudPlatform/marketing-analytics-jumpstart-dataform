@@ -27,7 +27,7 @@ SELECT
   dim.campaign_id,
   dim.campaign_name,
   fact.device,
-  fact.conversion_tracker_id,
+  --fact.conversion_tracker_id,
   fact.ad_conversion_type,
   fact.ad_conversion_name,
   fact.quantity,
