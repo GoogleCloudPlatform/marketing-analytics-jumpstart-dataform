@@ -40,7 +40,7 @@ Variables:
 * `ga4_incremental_processing_days_back` - number of days to look back when processing incremental data. Default is 3.
     
 * `ads_export_data` - an array of datasets where Ads data is exported. See the file for the exact syntax.
-* `ads_metrics_lookback_days` - number of days to calculate Ad metrics in the dashboard reports. Default is 365.
+* `ads_metrics_lookback_days` - number of days to query and load from the Ads Data Transfer Service landing tables to the fact tables for Ads Performance and Ads Conversions. Default is 365.
 
 ### Destination datasets
 Destination datasets are created in the project specified by `defaultDatabase`.
