@@ -21,8 +21,8 @@ config {
   uniqueKey: ga4.eventUniqueColumns,
   assertions: {
     rowConditions: [
-      'event_type = "' + ga4.eventTypeTagged + '" AND ga_session_id IS NOT NULL',
-      'event_type != "' + ga4.eventTypeTagged + '" AND ga_session_id IS NULL',
+      'IF(event_type = "' + ga4.eventTypeTagged + '", ga_session_id IS NOT NULL, true)',
+      'IF(event_type != "' + ga4.eventTypeTagged + '", ga_session_id IS NULL, true)',
       'IF(event_type = "' + ga4.eventTypeTagged + '", device_type_id IS NOT NULL, true)',
       'IF(event_type = "' + ga4.eventTypeTagged + '", normalized_device_type_id IS NOT NULL, true)',
       'IF(event_type = "' + ga4.eventTypeTagged + '", traffic_source_id IS NOT NULL, true)',
