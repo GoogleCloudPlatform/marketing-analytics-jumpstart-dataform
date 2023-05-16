@@ -44,7 +44,7 @@ SELECT
   segments_device AS device,
   SUM(metrics_impressions) AS impressions,
   SUM(metrics_clicks) AS clicks,
-  SUM(CAST (metrics_cost_micros AS NUMERIC)) AS cost  --cast to numeric for currency
+  SUM(CAST(metrics_cost_micros AS NUMERIC)) / 1,000,000 AS cost  --cast to numeric for currency. Divide by 1e6 to convert from micros.
 FROM (
   SELECT DISTINCT * FROM (
 ${union}
