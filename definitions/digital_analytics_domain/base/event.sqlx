@@ -63,6 +63,7 @@ config {
     user_ltv_revenue,
     user_ltv_currency,
     user_first_touch_timestamp,
+    privacy_info,
     items
   FROM ${ref("ga4_events")} source
   LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"traffic_source")}) t  

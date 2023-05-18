@@ -88,6 +88,12 @@ SELECT
   user_ltv_currency,
   TIMESTAMP_MICROS(user_first_touch_timestamp) user_first_touch_timestamp,
   items,
+  STRUCT (
+      privacy_info.analytics_storage = 'No' as analytics_excluded,
+      privacy_info.ads_storage = 'No' as ads_excluded,
+      privacy_info.uses_transient_token = 'Yes' as uses_transient_token
+  )
+  privacy_info,
   table_suffix
 FROM (
 SELECT
@@ -137,6 +143,7 @@ SELECT
     user_ltv.currency as user_ltv_currency,
     user_first_touch_timestamp,
     items,
+    privacy_info,
     _TABLE_SUFFIX as table_suffix
 FROM ${ref('events' + dataform.projectConfig.vars.ga4_export_table_suffix)}
   -- Exclude extra day exports 

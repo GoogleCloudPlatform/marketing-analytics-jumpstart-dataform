@@ -19,8 +19,7 @@ config {
     uniqueKey: ["ga_session_id", "user_pseudo_id"],
     description: "User session",
     assertions: {
-        nonNull: ["ga_session_id", "user_pseudo_id", "session_start","session_end", 
-        "session_engaged"]
+        nonNull: ["ga_session_id", "user_pseudo_id", "session_start","session_end", "session_engaged"]
     },
     bigquery: {
         // TODO: clustering on this table are best estimates
@@ -46,8 +45,8 @@ SELECT
     MAX(platform) platform, -- Platform should be the same per session.
     CURRENT_TIMESTAMP() as last_updated
 FROM ${ref(functions.baseSchema("ga4"), "ga4_events")} 
-    -- Sessions only make sense for events which have ga_session_id 
-WHERE ga_session_id IS NOT NULL
+    -- Sessions only make sense for events which have ga_session_id and user_pseudo_id
+WHERE ga_session_id IS NOT NULL and user_pseudo_id IS NOT NULL
     ${when(incremental(), `AND table_suffix BETWEEN '${ga4.incrementalSuffixStart()}' AND '${ga4.incrementalSuffixEnd()}'`) }
 GROUP BY ga_session_id, user_pseudo_id
 )
