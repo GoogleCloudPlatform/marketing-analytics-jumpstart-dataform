@@ -25,7 +25,6 @@ WITH landing AS (
     dim_ads.ad_id as ad_id,
     l.date_id as date_id,
     l.device as device,
-    --l.conversion_tracker_id as conversion_tracker_id,
     l.ad_conversion_type as ad_conversion_type,
     l.ad_conversion_name as ad_conversion_name,
     l.value as value,
@@ -50,7 +49,6 @@ warehouse AS (
     date_id,
     ad_id,
     device,
-    --conversion_tracker_id,
     ad_conversion_type,
     ad_conversion_name,
     value,
@@ -65,7 +63,7 @@ SELECT
       l.ad_conversion_type = w.ad_conversion_type AND
       l.ad_conversion_name = w.ad_conversion_name AND 
       l.value = w.value AND
-      l.quantity = w.value
+      l.quantity = w.quantity
     )
     THEN "MODIFY"
     ELSE "NO_ACTION"
@@ -75,8 +73,7 @@ FROM landing l
 LEFT JOIN warehouse w ON
   l.ad_id = w.ad_id AND
   l.date_id = w.date_id AND
-  l.device = w.device --AND
-  --l.conversion_tracker_id = w.conversion_tracker_id
+  l.device = w.device
 
 post_operations {
     # Update older versions of the fact
@@ -98,7 +95,6 @@ post_operations {
     l.date_id as date_id,
     l.ad_id as ad_id,
     l.device as device,
-    --l.conversion_tracker_id as conversion_tracker_id,
     l.ad_conversion_type as ad_conversion_type,
     l.ad_conversion_name as ad_conversion_name,
     l.value as value,
