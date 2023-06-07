@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS ${self()}
   date_id INT64,
   ad_id STRING,
   device STRING,
-  --conversion_tracker_id STRING,
   ad_conversion_type STRING,
   ad_conversion_name STRING,
   value NUMERIC,
