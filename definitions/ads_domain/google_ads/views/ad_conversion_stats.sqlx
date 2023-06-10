@@ -28,6 +28,7 @@ js {
     ad_group_ad_ad_group,
     segments_date,
     segments_device,
+    segments_conversion_action,
     segments_conversion_action_category,
     segments_conversion_action_name,
     metrics_conversions_value,
@@ -41,6 +42,7 @@ SELECT
   CAST(customer_id AS STRING) AS account_id,
   CAST(campaign_id AS STRING) AS campaign_id,
   SPLIT(ad_group_ad_ad_group,'/')[ORDINAL(4)] AS adgroup_id, --extract ad_group_id from ad_group string
+  SPLIT(segments_conversion_action,'/')[ORDINAL(4)] AS ad_conversion_action_id, --extract ad_conversion_action_id from ad_conversion_action string
   CAST(CAST(segments_date AS STRING FORMAT 'YYYYMMDD') AS INT64) AS date_id,
   segments_device AS device,
   segments_conversion_action_category AS ad_conversion_type,
@@ -59,5 +61,6 @@ GROUP BY
   adgroup_id,
   date_id,
   device,
+  ad_conversion_action_id,
   ad_conversion_type,
   ad_conversion_name
