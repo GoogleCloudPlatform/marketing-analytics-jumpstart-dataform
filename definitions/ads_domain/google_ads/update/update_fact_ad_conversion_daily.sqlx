@@ -16,7 +16,7 @@
 config { 
   type: "table",
   schema: functions.baseSchema("ads"),
-  dependencies: [ "update_dim_ads"],
+  dependencies: ["update_dim_ads"],
   tags: ["ads"]
 }
 
@@ -25,6 +25,7 @@ WITH landing AS (
     dim_ads.ad_id as ad_id,
     l.date_id as date_id,
     l.device as device,
+    l.ad_conversion_action_id as ad_conversion_action_id,
     l.ad_conversion_type as ad_conversion_type,
     l.ad_conversion_name as ad_conversion_name,
     l.value as value,
@@ -49,6 +50,7 @@ warehouse AS (
     date_id,
     ad_id,
     device,
+    ad_conversion_action_id,
     ad_conversion_type,
     ad_conversion_name,
     value,
@@ -73,6 +75,7 @@ FROM landing l
 LEFT JOIN warehouse w ON
   l.ad_id = w.ad_id AND
   l.date_id = w.date_id AND
+  l.ad_conversion_action_id = w.ad_conversion_action_id AND
   l.device = w.device
 
 post_operations {
@@ -95,6 +98,7 @@ post_operations {
     l.date_id as date_id,
     l.ad_id as ad_id,
     l.device as device,
+    l.ad_conversion_action_id as ad_conversion_action_id,
     l.ad_conversion_type as ad_conversion_type,
     l.ad_conversion_name as ad_conversion_name,
     l.value as value,
