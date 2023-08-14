@@ -1,4 +1,4 @@
-# Marketing Data Engine Processing
+# Marketing Analytics Jumpstart Dataform
 
 ## Overview
 This Dataform project processes various marketing data sources and creates a Marketing Data Store (MDS) to be used in several use cases:
@@ -92,13 +92,13 @@ Once the patch is completed, the changes will be uncommitted in the destination 
 
 #### Example 
 Assuming you have a directory structure of:
- - ~/marketing-data-engine-dataform (this repo)
- - ~/our-marketing-data-engine-dataform (a copy of this repo containing your personalized dataform environment)
+ - ~/marketing-analytics-jumpstart-dataform (this repo)
+ - ~/our-marketing-analytics-jumpstart-dataform (a copy of this repo containing your personalized dataform environment)
 
-If you want to synchronize changes from `marketing-data-engine-dataform` to `our-marketing-data-engine-dataform`, you would execute the following:
+If you want to synchronize changes from `marketing-analytics-jumpstart-dataform` to `our-marketing-analytics-jumpstart-dataform`, you would execute the following:
     
-    cd ~/marketing-data-engine-dataform
-    bash mde_repo_sync.sh . ../our-marketing-data-engine-dataform
+    cd ~/marketing-analytics-jumpstart-dataform
+    bash mde_repo_sync.sh . ../our-marketing-analytics-jumpstart-dataform
     
 
 
