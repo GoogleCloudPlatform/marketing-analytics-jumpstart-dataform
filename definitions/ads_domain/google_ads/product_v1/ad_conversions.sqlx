@@ -19,6 +19,13 @@ config {
   tags: ['ads']
 }
 
+WITH dim AS (
+  SELECT
+    * 
+  FROM
+    ${ref({schema: functions.baseSchema("ads"), name: "dim_ads"})}
+  WHERE current_flag = TRUE
+)
 SELECT
   ad_id,
   fact.date_id,
@@ -34,7 +41,7 @@ SELECT
   fact.value
   
 FROM
-  ${ref({schema: functions.baseSchema("ads"), name: "dim_ads"})} dim
+  dim
 INNER JOIN
   ${ref({schema: functions.baseSchema("ads"), name: "fact_ad_conversion_daily"})} fact
 USING
