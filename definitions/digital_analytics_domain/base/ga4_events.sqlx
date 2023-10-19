@@ -28,8 +28,8 @@ js {
     }
     return 'CASE WHEN ' + expression + '="(not set)" THEN "" ELSE ' + expression + ' END as ' + columnName
   }
-  function notNullString(column) {
-    return 'COALESCE(' + column + ', "") as ' + column;
+  function notNullString(column, columnName) {
+    return 'COALESCE(' + column + ', "") as ' + columnName;
   }
 }
 
@@ -43,63 +43,94 @@ config {
 
 -- TODO: not clear if the select from subselect is needed here.
 SELECT
-  ${notNullString('traffic_source_medium')},
-  ${notNullString('traffic_source_name')},
-  ${notNullString('traffic_source')},
+  --traffic_source dimension
+  ${notNullString('first_traffic_source_medium','first_traffic_source_medium')},
+  ${notNullString('first_traffic_source_name','first_traffic_source_name')},
+  ${notNullString('first_traffic_source','first_traffic_source')},
+  ${notNullString('traffic_source_utm_id','traffic_source_utm_id')},
+  ${notNullString('event_params_page_referrer','traffic_source_page_referrer')},
+  --${notNullString('traffic_source_utm_campaign','traffic_source_utm_campaign')},
+  ${notNullString('CASE WHEN traffic_source_utm_campaign IS NULL THEN event_params_campaign ELSE traffic_source_utm_campaign END','traffic_source_utm_campaign')},
+  --${notNullString('traffic_source_utm_source','traffic_source_utm_source')},
+  ${notNullString('CASE WHEN traffic_source_utm_source IS NULL THEN event_params_source ELSE traffic_source_utm_source END','traffic_source_utm_source')},
+  --${notNullString('traffic_source_utm_medium','traffic_source_utm_medium')},
+  ${notNullString('CASE WHEN traffic_source_utm_medium IS NULL THEN event_params_medium ELSE traffic_source_utm_medium END','traffic_source_utm_medium')},
+  ${notNullString('traffic_source_utm_term','traffic_source_utm_term')},
+  ${notNullString('traffic_source_utm_content','traffic_source_utm_content')},
+  --${notNullString('traffic_source_gclid','traffic_source_gclid')},
+  ${notNullString('CASE WHEN traffic_source_gclid IS NULL THEN event_params_gclid ELSE traffic_source_gclid END','traffic_source_gclid')},
+  ${notNullString('event_params_dclid','traffic_source_dclid')},
+  ${notNullString('traffic_source_gmp_id','traffic_source_gmp_id')},
+  ${notNullString('traffic_source_merchant_center_id','traffic_source_merchant_center_id')},
+  CASE WHEN event_params_dclid IS NOT NULL THEN "display_and_video_360" WHEN event_params_gclid IS NOT NULL THEN "ads" ELSE "" END as advertiser_platform,
+  --geo dimension
   ${stripNotSet('continent')}, 
   ${stripNotSet('subcontinent')},
   ${stripNotSet('country')},
   ${stripNotSet('region')},
   ${stripNotSet('city')},
   ${stripNotSet('metro')},
-  ${notNullString('device_category')},
-  ${notNullString('device_mobile_brand_name')},
-  ${notNullString('device_mobile_model_name')},
-  ${notNullString('device_model')},
-  ${notNullString('device_os')},
-  ${notNullString('device_os_version')},
-  ${notNullString('device_web_browser')},
-  ${notNullString('device_web_browser_version')},
+  --device dimension
+  ${notNullString('device_category','device_category')},
+  ${notNullString('device_mobile_brand_name','device_mobile_brand_name')},
+  ${notNullString('device_mobile_model_name','device_mobile_model_name')},
+  ${notNullString('device_model','device_model')},
+  ${notNullString('device_os','device_os')},
+  ${notNullString('device_os_version','device_os_version')},
+  ${notNullString('device_web_browser','device_web_browser')},
+  ${notNullString('device_web_browser_version','device_web_browser_version')},
   COALESCE(SPLIT(device_web_browser_version, '.')[OFFSET(0)], "") as normalized_device_web_browser_version,
   COALESCE(app_store, "") as app_store,
   COALESCE(app_version, "") as app_version,
+  language,
+  COALESCE(left(language, 2), "") as normalized_language,
+  COALESCE(device_advertising_id, "") device_advertising_id,
+  --event fact
   TIMESTAMP_MICROS(event_timestamp) as event_timestamp,
   event_name,
   platform,
   stream_id,
+  --user dimension
   user_pseudo_id,
   user_id,
-  language,
-  COALESCE(left(language, 2), "") as normalized_language,
-  COALESCE(device_advertising_id, "") device_advertising_id,
+  TIMESTAMP_MICROS(user_first_touch_timestamp) as user_first_touch_timestamp,
+  is_active_user,
+  --session fact
   ga_session_id,
   ga_session_number,
-  CAST(session_engaged_during_event AS BOOL) as session_engaged_during_event,
+  COALESCE(CASE WHEN session_engaged_during_event IS NULL THEN CAST(event_engaged_session_event AS BOOL) ELSE CAST(session_engaged_during_event AS BOOL) END, FALSE) as session_engaged_during_event,
   engagement_time_msec,
-  page_location,
-  -- TODO: add unit test for the regexp extraction including the case where there is an anchor at the end of the URL
-  CASE WHEN page_location IS NULL THEN NULL ELSE REGEXP_EXTRACT(page_location,".*[?&]gclid=([^&#]+)") END gclid, 
+  -- page dimension
+  page_location, 
   page_title,
-  page_referrer,
   percent_scrolled,
   outbound_click_url,
+  --ecommerce fact
   ecommerce,
   user_ltv_revenue,
   user_ltv_currency,
-  TIMESTAMP_MICROS(user_first_touch_timestamp) user_first_touch_timestamp,
+  -- items fact
   items,
   STRUCT (
       privacy_info.analytics_storage = 'No' as analytics_excluded,
       privacy_info.ads_storage = 'No' as ads_excluded,
       privacy_info.uses_transient_token = 'Yes' as uses_transient_token
-  )
-  privacy_info,
+  ) as privacy_info,
   table_suffix
 FROM (
 SELECT
-    LOWER(traffic_source.medium) as traffic_source_medium, 
-    LOWER(traffic_source.name) as traffic_source_name, 
-    LOWER(traffic_source.source) as traffic_source, 
+    LOWER(traffic_source.medium) as first_traffic_source_medium, 
+    LOWER(traffic_source.name) as first_traffic_source_name, 
+    LOWER(traffic_source.source) as first_traffic_source,
+    LOWER(collected_traffic_source.manual_campaign_id) as traffic_source_utm_id,
+    LOWER(collected_traffic_source.manual_campaign_name) as traffic_source_utm_campaign,
+    LOWER(collected_traffic_source.manual_source) as traffic_source_utm_source,
+    LOWER(collected_traffic_source.manual_medium) as traffic_source_utm_medium,
+    LOWER(collected_traffic_source.manual_term) as traffic_source_utm_term,
+    LOWER(collected_traffic_source.manual_content) as traffic_source_utm_content,
+    LOWER(collected_traffic_source.gclid) as traffic_source_gclid,
+    LOWER(collected_traffic_source.dclid) as traffic_source_gmp_id,
+    LOWER(collected_traffic_source.srsltid) as traffic_source_merchant_center_id,
     geo.continent as continent,
     geo.sub_continent as subcontinent,
     geo.country as country,
@@ -136,14 +167,21 @@ SELECT
     ${intEventParam("engagement_time_msec")} as engagement_time_msec,
     ${stringEventParam("page_location")} as page_location,
     ${stringEventParam("page_title")} as page_title,
-    ${stringEventParam("page_referrer")} as page_referrer,
     ${intEventParam("percent_scrolled")} as percent_scrolled,
     ${stringEventParam("link_url")} as outbound_click_url,
+    ${stringEventParam("medium")} as event_params_medium,
+    ${stringEventParam("source")} as event_params_source,
+    ${intEventParam("engaged_session_event")} as event_engaged_session_event,
+    ${stringEventParam("campaign")} as event_params_campaign,
+    ${stringEventParam("page_referrer")} as event_params_page_referrer,
+    ${stringEventParam("dclid")} as event_params_dclid,
+    ${stringEventParam("gclid")} as event_params_gclid,
     CAST(user_ltv.revenue AS NUMERIC) as user_ltv_revenue,
     user_ltv.currency as user_ltv_currency,
     user_first_touch_timestamp,
     items,
     privacy_info,
+    is_active_user,
     _TABLE_SUFFIX as table_suffix
 FROM ${ref('events' + dataform.projectConfig.vars.ga4_export_table_suffix)}
   -- Exclude extra day exports 
