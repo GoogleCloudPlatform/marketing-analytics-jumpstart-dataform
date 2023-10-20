@@ -85,6 +85,18 @@ const trafficSourceUniqueColumns = [
     "traffic_source_medium"
 ];
 
+const aggregatedVBBColumns = {
+    "first_visit": "First_Visits",
+    "page_view": "Visit_Product_Page",
+    "view_item": "View_Product_Details",
+    "add_to_cart": "Add_Product_to_Cart",
+    "view_cart": "View_Cart",
+    "begin_checkout": "Begin_Checkout",
+    "add_shipping_info": "Added_Shipping_Info",
+    "add_payment_info": "Added_Payment_Info",
+    "purchase": "Purchase_Product"
+};
+
 const eventTypeTagged = "tagged";
 
 const eventTypePredicted = "predictive";
@@ -94,5 +106,6 @@ const eventTypeCustom = "custom";
 module.exports = {incrementalSuffixStart, incrementalSuffixEnd, 
 deviceUniqueColumns, normalizedDeviceUniqueColumns,
 eventUniqueColumns, locationUniqueColumns, trafficSourceUniqueColumns,
-browserUniqueColumns, eventTypeTagged, eventTypePredicted, eventTypeCustom };
+browserUniqueColumns, eventTypeTagged, eventTypePredicted, eventTypeCustom,
+aggregatedVBBColumns};
 
