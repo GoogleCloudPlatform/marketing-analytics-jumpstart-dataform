@@ -62,4 +62,11 @@ function percentChangeColumn(metric, granularity){
     return result;
 }
 
-module.exports = {multiColumnEqualsClause, parseIsoWeekYear, isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers, webBrowserCaseStatement};
+function aggregatedVBBColumns(eventDateField, eventDateAlias, columns) {
+    let result = `${eventDateField} as ${eventDateAlias}`;
+    for(const event_type in columns) {
+        result = result + `,\n  COUNTIF(event_name = "${event_type}") OVER(PARTITION BY ${eventDateField}) as ${columns[event_type]}`;
+    }
+    return result;
+}
+module.exports = {multiColumnEqualsClause, parseIsoWeekYear, isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers, webBrowserCaseStatement, aggregatedVBBColumns};
