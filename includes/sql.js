@@ -62,10 +62,10 @@ function percentChangeColumn(metric, granularity){
     return result;
 }
 
-function aggregatedVBBColumns(eventDateField, eventDateAlias, columns) {
-    let result = `${eventDateField} as ${eventDateAlias}`;
+function aggregatedVBBColumns(eventDateField, eventDateAlias, eventNameField, columns) {
+    let result = `${eventDateField} AS ${eventDateAlias}`;
     for(const event_type in columns) {
-        result = result + `,\n  COUNTIF(event_name = "${event_type}") OVER(PARTITION BY ${eventDateField}) as ${columns[event_type]}`;
+        result = result + `,\n  COUNTIF(${eventNameField} = "${event_type}") AS ${columns[event_type]}`;
     }
     return result;
 }
