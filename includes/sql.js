@@ -69,4 +69,19 @@ function aggregatedVBBColumns(eventDateField, eventDateAlias, eventNameField, co
     }
     return result;
 }
-module.exports = {multiColumnEqualsClause, parseIsoWeekYear, isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers, webBrowserCaseStatement, aggregatedVBBColumns};
+
+function selectFieldsFromRepeatedRecord(fieldName, columns) {
+    let result = "";
+    const tmpAlias = `${fieldName}ta`;
+    const doubleSpace = "  "
+    columns.forEach(column => {
+        if(result.length > 0) {
+            result = result + ',\n';
+        }
+        result = result + `${doubleSpace}${doubleSpace}${tmpAlias}.${column} AS ${column}`;
+    })
+    return 'ARRAY( SELECT STRUCT (\n' + result + `\n${doubleSpace}) FROM UNNEST(${fieldName}) AS ${tmpAlias} ) AS ${fieldName}`;
+}
+module.exports = {multiColumnEqualsClause, parseIsoWeekYear,
+isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers,
+webBrowserCaseStatement, aggregatedVBBColumns, selectFieldsFromRepeatedRecord};

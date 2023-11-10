@@ -97,6 +97,35 @@ const aggregatedVBBColumns = {
     "purchase": "Purchase_Product"
 };
 
+const eventsItemsSelectedColumns = [
+    "item_id",
+    "item_name",
+    "item_brand",
+    "item_variant",
+    "item_category",
+    "item_category2",
+    "item_category3",
+    "item_category4",
+    "item_category5",
+    "price_in_usd",
+    "price",
+    "quantity",
+    "item_revenue_in_usd",
+    "item_revenue",
+    "item_refund_in_usd",
+    "item_refund",
+    "coupon",
+    "affiliation",
+    "location_id",
+    "item_list_id",
+    "item_list_name",
+    "item_list_index",
+    "promotion_id",
+    "promotion_name",
+    "creative_name",
+    "creative_slot"
+];
+
 const eventTypeTagged = "tagged";
 
 const eventTypePredicted = "predictive";
@@ -107,5 +136,5 @@ module.exports = {incrementalSuffixStart, incrementalSuffixEnd,
 deviceUniqueColumns, normalizedDeviceUniqueColumns,
 eventUniqueColumns, locationUniqueColumns, trafficSourceUniqueColumns,
 browserUniqueColumns, eventTypeTagged, eventTypePredicted, eventTypeCustom,
-aggregatedVBBColumns};
+aggregatedVBBColumns, eventsItemsSelectedColumns};
 
