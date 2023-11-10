@@ -87,7 +87,7 @@ SELECT
   user_ltv_revenue,
   user_ltv_currency,
   TIMESTAMP_MICROS(user_first_touch_timestamp) user_first_touch_timestamp,
-  items,
+  ${sql.selectFieldsFromRepeatedRecord('items', ga4.eventsItemsSelectedColumns)},
   STRUCT (
       privacy_info.analytics_storage = 'No' as analytics_excluded,
       privacy_info.ads_storage = 'No' as ads_excluded,
