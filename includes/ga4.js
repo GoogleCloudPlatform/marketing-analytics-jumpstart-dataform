@@ -126,6 +126,15 @@ const eventsItemsSelectedColumns = [
     "creative_slot"
 ];
 
+const collectedTrafficSourceUniqueColumns = [
+    "collected_traffic_source_manual_campaign_id",
+    "collected_traffic_source_manual_campaign_name",
+    "collected_traffic_source_manual_source",
+    "collected_traffic_source_manual_medium",
+    "collected_traffic_source_manual_term",
+    "collected_traffic_source_manual_content"
+];
+
 const eventTypeTagged = "tagged";
 
 const eventTypePredicted = "predictive";
@@ -136,5 +145,5 @@ module.exports = {incrementalSuffixStart, incrementalSuffixEnd,
 deviceUniqueColumns, normalizedDeviceUniqueColumns,
 eventUniqueColumns, locationUniqueColumns, trafficSourceUniqueColumns,
 browserUniqueColumns, eventTypeTagged, eventTypePredicted, eventTypeCustom,
-aggregatedVBBColumns, eventsItemsSelectedColumns};
+aggregatedVBBColumns, eventsItemsSelectedColumns, collectedTrafficSourceUniqueColumns};
 

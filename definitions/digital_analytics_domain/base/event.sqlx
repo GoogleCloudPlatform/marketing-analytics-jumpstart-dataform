@@ -48,6 +48,7 @@ config {
     ga_session_number,
     user_id as user_id,
     t.traffic_source_id,
+    ct.collected_traffic_source_id,
     l.location_id,
     d.device_type_id,
     nd.normalized_device_type_id,
@@ -68,6 +69,8 @@ config {
   FROM ${ref("ga4_events")} source
   LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"traffic_source")}) t  
     USING (${ga4.trafficSourceUniqueColumns})
+  LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"collected_traffic_source")}) ct  
+    USING (${ga4.collectedTrafficSourceUniqueColumns})
   LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"location")}) l 
     USING (${ga4.locationUniqueColumns})
   LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"device_type")} ) d 
@@ -85,5 +88,8 @@ post_operations {
   ${when(! incremental(), `ALTER TABLE ${self()} ADD PRIMARY KEY (event_id) NOT ENFORCED;` )}
   ALTER TABLE ${self()} ADD CONSTRAINT IF NOT EXISTS 
     fk_event_traffic_source FOREIGN KEY (traffic_source_id) 
-    REFERENCES ${ref(functions.baseSchema("ga4"),"traffic_source")}(traffic_source_id) NOT ENFORCED
+    REFERENCES ${ref(functions.baseSchema("ga4"),"traffic_source")}(traffic_source_id) NOT ENFORCED;
+  ALTER TABLE ${self()} ADD CONSTRAINT IF NOT EXISTS 
+    fk_event_collected_traffic_source FOREIGN KEY (collected_traffic_source_id) 
+    REFERENCES ${ref(functions.baseSchema("ga4"),"collected_traffic_source")}(collected_traffic_source_id) NOT ENFORCED;
 }
