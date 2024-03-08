@@ -69,7 +69,7 @@ SELECT
   stream_id,
   user_pseudo_id,
   user_id,
-  language,
+  ${notNullString('language')},
   COALESCE(left(language, 2), "") as normalized_language,
   COALESCE(device_advertising_id, "") device_advertising_id,
   ga_session_id,
