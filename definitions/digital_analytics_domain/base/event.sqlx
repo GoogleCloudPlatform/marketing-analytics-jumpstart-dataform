@@ -36,6 +36,13 @@ config {
   tags: ['ga4']
   }
 
+pre_operations {
+  -- NOTE: this only adds the missing column, to poplulate the field value a custom backfill script need to be created and run.
+  ${when(incremental(), `ALTER TABLE ${self()}
+  ADD COLUMN IF NOT EXISTS collected_traffic_source_id STRING`,
+  'SELECT "ignore_it"')
+    }
+}
   SELECT
     GENERATE_UUID() as event_id,
     CASE 
@@ -77,7 +84,6 @@ config {
     USING (${ga4.deviceUniqueColumns})
   LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"normalized_device_type")} ) nd
     USING (${ga4.normalizedDeviceUniqueColumns})
-    -- TODO: validate merges of events with NULL ga_session_ids won't result in duplicates
   ${when(incremental(), `WHERE table_suffix BETWEEN '${ga4.incrementalSuffixStart()}' and '${ga4.incrementalSuffixEnd()}'
     AND NOT EXISTS(
     SELECT * FROM ${self()} target WHERE
