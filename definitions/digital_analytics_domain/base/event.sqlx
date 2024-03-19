@@ -37,7 +37,7 @@ config {
   }
 
 pre_operations {
-  -- NOTE: this only adds the missing column, to poplulate the field value a custom backfill script need to be created and run.
+  -- NOTE: this only adds the missing column, to poplulate the field value execute the backfill script backfill/collected_traffic_source_backfill.sqlx
   ${when(incremental(), `ALTER TABLE ${self()}
   ADD COLUMN IF NOT EXISTS collected_traffic_source_id STRING`,
   'SELECT "ignore_it"')
