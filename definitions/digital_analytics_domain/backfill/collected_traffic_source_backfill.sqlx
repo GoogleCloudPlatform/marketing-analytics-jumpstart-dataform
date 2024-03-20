@@ -18,27 +18,17 @@ config {
     type: "operations",
 }
 
-MERGE
-  ${ref(functions.baseSchema("ga4"), "event")} T
-USING
-  (
+UPDATE
+  ${ref(functions.baseSchema("ga4"), "event")} e
+SET
+  collected_traffic_source_id = (
   SELECT
-    e.event_id,
     ct.collected_traffic_source_id
-  FROM (
-    SELECT
-      event_id,
-      ${ga4.eventUniqueColumns}
-    FROM
-      ${ref(functions.baseSchema("ga4"), "event")}
-    WHERE
-      collected_traffic_source_id IS NULL ) e
-  LEFT JOIN (SELECT * FROM ${ref("ga4_events")}) g_e
-  ON ${sql.multiColumnEqualsClause('e', 'g_e', ga4.eventUniqueColumns)}
-  LEFT JOIN (SELECT * FROM ${ref(functions.baseSchema("ga4"), "collected_traffic_source")} ) ct
-  ON ${sql.multiColumnEqualsClause('g_e', 'ct', ga4.collectedTrafficSourceUniqueColumns)}
-  GROUP BY e.event_id, ct.collected_traffic_source_id
-  ) S
-ON T.event_id = S.event_id
-WHEN MATCHED THEN
-UPDATE SET collected_traffic_source_id = S.collected_traffic_source_id
+  FROM
+    ${ref("ga4_events")} g_e,
+    ${ref(functions.baseSchema("ga4"), "collected_traffic_source")} ct
+  WHERE
+    ${sql.multiColumnEqualsClause('e', 'g_e', ga4.eventUniqueColumns)}
+    AND ${sql.multiColumnEqualsClause('g_e', 'ct', ga4.collectedTrafficSourceUniqueColumns)} )
+WHERE
+  collected_traffic_source_id IS NULL
