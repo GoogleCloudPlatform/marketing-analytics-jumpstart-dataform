@@ -82,6 +82,18 @@ function selectFieldsFromRepeatedRecord(fieldName, columns) {
     })
     return 'ARRAY( SELECT STRUCT (\n' + result + `\n${doubleSpace}) FROM UNNEST(${fieldName}) AS ${tmpAlias} ) AS ${fieldName}`;
 }
+
+function selectMultiColumnFromFirstEntry(table_alias, sorting_column, sorting_order, columns) {
+    let result = "";
+    columns.forEach(column => {
+        if( result.length > 0) {
+            result = result + ',\n  ';
+        }
+        result = result + 'ARRAY_AGG('+table_alias+' ORDER BY '+sorting_column+' '+sorting_order+' LIMIT 1)[OFFSET(0)].'+column+' AS '+column;
+    });
+    return result;
+}
 module.exports = {multiColumnEqualsClause, parseIsoWeekYear,
 isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers,
-webBrowserCaseStatement, aggregatedVBBColumns, selectFieldsFromRepeatedRecord};
+webBrowserCaseStatement, aggregatedVBBColumns,
+selectFieldsFromRepeatedRecord, selectMultiColumnFromFirstEntry};

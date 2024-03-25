@@ -21,26 +21,28 @@ config {
 }
 
 js {
+  const event_type_column = 'event_type';
+  const timestamp_column = 'event_timestamp';
+  const group_by_columns = [
+      'user_id',
+      'user_pseudo_id',
+  ];
   const columns = [
-    'user_pseudo_id',
-    'user_id',
-    'event_id',
-    'event_name',
-    'event_type',
-    'event_timestamp'
-  ]
+      'event_id',
+      'event_name',
+      event_type_column,
+      timestamp_column
+  ];
+  const table_alias = 't';
 }
 
 SELECT
-${columns}
-FROM (
-  SELECT
-    ${columns},
-    ROW_NUMBER() OVER (PARTITION BY user_pseudo_id ORDER BY event_timestamp DESC) AS rn
-  FROM
-    ${ref({schema: functions.baseSchema("ga4"), name: "event"})}
-  WHERE
-    event_timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 DAY)
-    AND event_type IN ('tagged') )
+  ${group_by_columns},
+  ${sql.selectMultiColumnFromFirstEntry(table_alias, timestamp_column, 'DESC', columns)}
+FROM
+  ${ref({schema: functions.baseSchema("ga4"), name: "event"})} AS ${table_alias}
 WHERE
-  rn = 1
+  ${table_alias}.${timestamp_column} >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 DAY)
+  AND ${table_alias}.${event_type_column} IN ('tagged')
+GROUP BY
+  ${group_by_columns}
