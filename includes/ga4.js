@@ -135,6 +135,16 @@ const collectedTrafficSourceUniqueColumns = [
     "collected_traffic_source_manual_content"
 ];
 
+const eventsItemsSafeCastColumns = {
+    "price_in_usd": "FLOAT64",
+    "price": "FLOAT64",
+    "quantity": "INT64",
+    "item_revenue_in_usd": "FLOAT64",
+    "item_revenue": "FLOAT64",
+    "item_refund_in_usd": "FLOAT64",
+    "item_refund": "FLOAT64"
+};
+
 const eventTypeTagged = "tagged";
 
 const eventTypePredicted = "predictive";
@@ -145,5 +155,6 @@ module.exports = {incrementalSuffixStart, incrementalSuffixEnd,
 deviceUniqueColumns, normalizedDeviceUniqueColumns,
 eventUniqueColumns, locationUniqueColumns, trafficSourceUniqueColumns,
 browserUniqueColumns, eventTypeTagged, eventTypePredicted, eventTypeCustom,
-aggregatedVBBColumns, eventsItemsSelectedColumns, collectedTrafficSourceUniqueColumns};
+aggregatedVBBColumns, eventsItemsSelectedColumns, collectedTrafficSourceUniqueColumns,
+eventsItemsSafeCastColumns};
 
