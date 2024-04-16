@@ -70,7 +70,7 @@ function aggregatedVBBColumns(eventDateField, eventDateAlias, eventNameField, co
     return result;
 }
 
-function selectFieldsFromRepeatedRecord(fieldName, columns) {
+function selectFieldsFromRepeatedRecord(fieldName, columns, safe_cast_columns) {
     let result = "";
     const tmpAlias = `${fieldName}ta`;
     const doubleSpace = "  "
@@ -78,7 +78,15 @@ function selectFieldsFromRepeatedRecord(fieldName, columns) {
         if(result.length > 0) {
             result = result + ',\n';
         }
-        result = result + `${doubleSpace}${doubleSpace}${tmpAlias}.${column} AS ${column}`;
+        result = result + `${doubleSpace}${doubleSpace}`;
+        if(column in safe_cast_columns) {
+            result = result + 'SAFE_CAST(';
+        }
+        result = result + `${tmpAlias}.${column}`;
+        if(column in safe_cast_columns) {
+            result = result + ` AS ${safe_cast_columns[column]})`;
+        }
+        result = result + ` AS ${column}`;
     })
     return 'ARRAY( SELECT STRUCT (\n' + result + `\n${doubleSpace}) FROM UNNEST(${fieldName}) AS ${tmpAlias} ) AS ${fieldName}`;
 }
