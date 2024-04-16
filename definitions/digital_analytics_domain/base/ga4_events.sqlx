@@ -80,7 +80,7 @@ SELECT
   COALESCE(device_advertising_id, "") device_advertising_id,
   ga_session_id,
   ga_session_number,
-  CAST(session_engaged_during_event AS BOOL) as session_engaged_during_event,
+  SAFE_CAST(session_engaged_during_event AS BOOL) as session_engaged_during_event,
   engagement_time_msec,
   page_location,
   -- TODO: add unit test for the regexp extraction including the case where there is an anchor at the end of the URL
@@ -138,13 +138,13 @@ SELECT
     device.advertising_id as device_advertising_id,
     STRUCT (
       ${stripNotSet('ecommerce.transaction_id', 'transaction_id')},
-      CAST(ecommerce.purchase_revenue_in_usd AS NUMERIC) as purchase_revenue_in_usd,
+      SAFE_CAST(ecommerce.purchase_revenue_in_usd AS NUMERIC) as purchase_revenue_in_usd,
       ecommerce.total_item_quantity as total_item_quantity,
       ecommerce.refund_value_in_usd as refund_value_in_usd
     ) ecommerce,
     ${intEventParam("ga_session_id")} as ga_session_id,
     ${intEventParam("ga_session_number")} as ga_session_number,
-    (SELECT COALESCE(ep.value.int_value, CAST(ep.value.string_value AS INT64)) FROM UNNEST(event_params) ep WHERE ep.key = "session_engaged" LIMIT 1) as session_engaged_during_event,
+    (SELECT COALESCE(ep.value.int_value, SAFE_CAST(ep.value.string_value AS INT64)) FROM UNNEST(event_params) ep WHERE ep.key = "session_engaged" LIMIT 1) as session_engaged_during_event,
     ${intEventParam("engagement_time_msec")} as engagement_time_msec,
     ${stringEventParam("page_location")} as page_location,
     ${stringEventParam("page_title")} as page_title,
