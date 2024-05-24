@@ -31,7 +31,8 @@ js {
       'event_id',
       'event_name',
       event_type_column,
-      timestamp_column
+      timestamp_column,
+      'ga_session_id'
   ];
   const table_alias = 't';
 }
