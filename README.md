@@ -5,6 +5,7 @@ This Dataform project processes various marketing data sources and creates a Mar
 * Retain historical marketing data
 * Create high performance dashboards
 * Perform Data Analytics
+* Implement GenAI use cases
 * Train ML models
 
 ## MDS structure
