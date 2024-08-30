@@ -32,7 +32,8 @@ js {
       'event_name',
       event_type_column,
       timestamp_column,
-      'ga_session_id'
+      'ga_session_id',
+      'stream_id'
   ];
   const table_alias = 't';
 }
