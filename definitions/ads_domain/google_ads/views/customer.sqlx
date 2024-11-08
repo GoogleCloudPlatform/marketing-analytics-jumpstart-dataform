@@ -39,7 +39,7 @@ SELECT DISTINCT
   customer_test_account AS is_test_account,
   customer_currency_code AS currency,
   customer_time_zone AS timezone
-
 FROM (
 ${union}
 )
+QUALIFY ROW_NUMBER() OVER (PARTITION BY CAST(customer_id AS STRING)) = 1
