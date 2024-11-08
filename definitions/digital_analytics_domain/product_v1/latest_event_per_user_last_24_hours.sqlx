@@ -1,5 +1,5 @@
 /*
-* Copyright 2023 Google LLC
+* Copyright 2024 Google LLC
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 config {
   type: "view",
   schema: functions.productSchema("ga4"),
-  description: "Latest event per user within the last 72 hours window",
+  description: "Latest event per user within the last 24 hours window",
   tags: ['ga4']
 }
 
@@ -44,7 +44,7 @@ SELECT
 FROM
   ${ref({schema: functions.baseSchema("ga4"), name: "event"})} AS ${table_alias}
 WHERE
-  ${table_alias}.${timestamp_column} >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 DAY)
+  ${table_alias}.${timestamp_column} >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
   AND ${table_alias}.${event_type_column} IN ('tagged')
 GROUP BY
   ${group_by_columns}
