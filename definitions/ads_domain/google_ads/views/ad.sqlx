@@ -27,20 +27,16 @@ js {
     ad_group_ad_ad_type,
     ad_group_ad_status`;
 
-  const union = functions.buildViewUnion(columns, "ads", "p_ads_Ad");
+  const union = functions.buildAdsViewUnion(columns, "ads_Ad");
 }
-WITH distincts AS (
-  SELECT DISTINCT
-    "GOOGLE_ADS" AS ad_system,
-    CAST(ad_group_ad_ad_id AS STRING) AS creative_id,
-    SPLIT(ad_group_ad_ad_group,'/')[ORDINAL(4)] AS adgroup_id, --extract ad_group_id from ad_group string
-    CAST(customer_id AS STRING) AS account_id,
-    CAST(campaign_id AS STRING) AS campaign_id,
-    ad_group_ad_ad_type AS ad_type,
-    ad_group_ad_status AS ad_status
-  FROM (
-  ${union}
-  )
+SELECT DISTINCT
+  "GOOGLE_ADS" AS ad_system,
+  CAST(ad_group_ad_ad_id AS STRING) AS creative_id,
+  SPLIT(ad_group_ad_ad_group,'/')[ORDINAL(4)] AS adgroup_id, --extract ad_group_id from ad_group string
+  CAST(customer_id AS STRING) AS account_id,
+  CAST(campaign_id AS STRING) AS campaign_id,
+  ad_group_ad_ad_type AS ad_type,
+  ad_group_ad_status AS ad_status
+FROM (
+${union}
 )
-SELECT * FROM distincts
-QUALIFY ROW_NUMBER() OVER (PARTITION BY account_id, campaign_id, adgroup_id, creative_id) = 1
