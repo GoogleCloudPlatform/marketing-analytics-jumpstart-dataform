@@ -14,30 +14,20 @@
  * limitations under the License.
  */
 config { 
-  type: "view",
+  type: "operations",
   schema: functions.baseSchema("ads"),
+  hasOutput: true,
   tags: ["ads"]
 }
-js {
-  const columns =
-    `customer_id,
-    campaign_id,
-    ad_group_id,
-    ad_group_name,
-    ad_group_type,
-    ad_group_status`;
 
-  const union = functions.buildAdsViewUnion(columns, "ads_AdGroup");
-}
-SELECT DISTINCT
-  "GOOGLE_ADS" AS ad_system,
-  CAST(customer_id AS STRING) AS account_id,
-  CAST(campaign_id AS STRING) AS campaign_id,
-  CAST(ad_group_id AS STRING) AS adgroup_id,
-  ad_group_name AS adgroup_name,
-  ad_group_type AS adgroup_type,
-  ad_group_status AS adgroup_status
-FROM (
-${union}
-)
-QUALIFY ROW_NUMBER() OVER (PARTITION BY CAST(customer_id AS STRING), CAST(campaign_id AS STRING), CAST(ad_group_id AS STRING)) = 1
+CREATE TABLE IF NOT EXISTS ${self()}
+(
+  ad_system STRING,
+  account_id STRING,
+  auto_tagging_enabled BOOL,
+  currency STRING,
+  account_name STRING,
+  is_manager BOOL,
+  is_test_account BOOL,
+  timezone STRING
+); 
