@@ -21,20 +21,25 @@ config {
 js {
   const columns =
     `customer_id,
-    customer_descriptive_name,
+    customer_auto_tagging_enabled,
     customer_currency_code,
+    customer_descriptive_name,
+    customer_manager,
+    customer_test_account,
     customer_time_zone`;
 
-  const union = functions.buildViewUnion(columns, "ads", "p_ads_Customer");
+  const union = functions.buildAdsViewUnion(columns, "ads_Customer");
 }
 SELECT DISTINCT
   "GOOGLE_ADS" AS ad_system,
   CAST(customer_id AS STRING) AS account_id,
+  customer_auto_tagging_enabled AS auto_tagging_enabled,
   customer_descriptive_name AS account_name,
+  customer_manager AS is_manager,
+  customer_test_account AS is_test_account,
   customer_currency_code AS currency,
   customer_time_zone AS timezone
+
 FROM (
 ${union}
 )
-QUALIFY ROW_NUMBER() OVER (PARTITION BY CAST(customer_id AS STRING)) = 1
-
