@@ -27,7 +27,7 @@ js {
     ad_group_type,
     ad_group_status`;
 
-  const union = functions.buildViewUnion(columns, "ads", "p_ads_AdGroup");
+  const union = functions.buildAdsViewUnion(columns, "ads_AdGroup");
 }
 SELECT DISTINCT
   "GOOGLE_ADS" AS ad_system,
@@ -40,4 +40,3 @@ SELECT DISTINCT
 FROM (
 ${union}
 )
-QUALIFY ROW_NUMBER() OVER (PARTITION BY CAST(customer_id AS STRING), CAST(campaign_id AS STRING), CAST(ad_group_id AS STRING)) = 1
