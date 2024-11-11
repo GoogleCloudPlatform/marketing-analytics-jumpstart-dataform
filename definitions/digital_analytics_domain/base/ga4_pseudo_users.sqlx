@@ -44,8 +44,8 @@ config {
 SELECT
   pseudo_user_id,
   stream_id,
-  TIMESTAMP_MICROS(user_last_active_timestamp_micros) as user_last_active_timestamp_micros,
-  TIMESTAMP_MICROS(user_first_touch_timestamp_micros) as user_first_touch_timestamp_micros,
+  TIMESTAMP_MICROS(user_last_active_timestamp_micros) as user_last_active_timestamp,
+  TIMESTAMP_MICROS(user_first_touch_timestamp_micros) as user_first_touch_timestamp,
   PARSE_DATE('%Y%m%d', user_first_purchase_date) as user_first_purchase_date,
   --device dimension
   ${notNullString('device_category','device_category')},
@@ -62,18 +62,18 @@ SELECT
   STRUCT(
       audiences_id as id,
       ${notNullString('audiences_name', 'name')},
-      TIMESTAMP_MICROS(IFNULL(audiences_membership_start_timestamp_micros, 0)) as membership_start_timestamp_micros,
-      TIMESTAMP_MICROS(IFNULL(audiences_membership_expiry_timestamp_micros, 0)) as membership_expiry_timestamp_micros,
+      TIMESTAMP_MICROS(IFNULL(audiences_membership_start_timestamp_micros, 0)) as membership_start_timestamp,
+      TIMESTAMP_MICROS(IFNULL(audiences_membership_expiry_timestamp_micros, 0)) as membership_expiry_timestamp,
       IFNULL(audiences_non_personalized_ads_user, FALSE) as non_personalized_ads_user
   ) as audiences,
   --user_lifetime_value fact
   STRUCT(
       IFNULL(user_ltv.revenue_in_usd, 0.0) as revenue_in_usd,
       IFNULL(user_ltv.sessions, 0) as sessions,
-      TIMESTAMP_MILLIS(IFNULL(user_ltv.engagement_time_millis, 0)) as engagement_time_millis,
+      TIMESTAMP_MILLIS(IFNULL(user_ltv.engagement_time_millis, 0)) as engagement_timestamp,
       IFNULL(user_ltv.purchases, 0) as purchases,
       IFNULL(user_ltv.engaged_sessions, 0) as engaged_sessions,
-      TIMESTAMP_MICROS(IFNULL(user_ltv.session_duration_micros, 0)) as session_duration_micros
+      SAFE_DIVIDE(IFNULL(user_ltv.session_duration_micros, 0.0),1000000.0) as session_duration
   ) as user_ltv,
   --predictions fact
   STRUCT(
@@ -82,10 +82,10 @@ SELECT
       IFNULL(predictions.revenue_28d_in_usd, 0.0) as revenue_28d_in_usd
   ) as ga4_predictions,
   --privacy_info dim
-  STRUCT (
-      privacy_info.is_limited_ad_tracking = 'true' as ads_tracking_limited,
-      privacy_info.is_ads_personalization_allowed = 'true' as ads_personalization_allowed
-  ) as privacy_info,
+  privacy_info.is_limited_ad_tracking = 'true' as ads_tracking_limited,
+  privacy_info.is_ads_personalization_allowed = 'true' as ads_personalization_allowed,
+  last_change_date,
+  last_updated_date,
   table_suffix
 FROM (
 SELECT
@@ -111,6 +111,8 @@ SELECT
     user_ltv,
     predictions,
     privacy_info,
+    PARSE_DATE('%Y%m%d', occurrence_date) as last_change_date,
+    PARSE_DATE('%Y%m%d', last_updated_date) as last_updated_date,
     _TABLE_SUFFIX as table_suffix
 FROM ${ref('pseudonymous_users' + dataform.projectConfig.vars.ga4_export_table_suffix)}, UNNEST(audiences) as audiences
 )

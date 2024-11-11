@@ -1,0 +1,53 @@
+/*
+ * Copyright 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {
+  type: "incremental",
+  schema: functions.baseSchema("ga4"),
+  description: "Pseudo user provacy info dimension",
+  columns: docs.ga4_pseudo_user_privacy_info_columns,
+  uniqueKey: ["privacy_info_id"],
+  bigquery: {
+    // TODO: Partionioning and clustering on this table are best estimates
+    partitionBy: "DATE_TRUNC(last_updated_date, MONTH)"
+  },
+  tags: ['ga4']
+  }
+
+WITH source AS
+  (SELECT DISTINCT
+    ads_tracking_limited,
+    ads_personalization_allowed,
+    last_change_date,
+    last_updated_date
+  FROM ${ref("ga4_pseudo_users")}
+  ${when(incremental(), `WHERE table_suffix BETWEEN '${ga4.incrementalSuffixStart()}' and '${ga4.incrementalSuffixEnd()}'` )}
+  )
+SELECT 
+  GENERATE_UUID() as privacy_info_id, 
+  source.*, 
+  CURRENT_TIMESTAMP() as created_ts 
+FROM source
+  ${when(incremental(), `
+  WHERE NOT EXISTS(
+    SELECT * FROM ${self()} target WHERE
+    ${sql.multiColumnEqualsClause('source', 'target', ga4.pseudoUserPrivacyInfoUniqueColumns)}
+  )
+  ` )}
+  
+post_operations {
+  ${when(incremental(), 'SELECT "ignore_it"', 
+    `ALTER TABLE ${self()} ADD PRIMARY KEY (privacy_info_id) NOT ENFORCED;` )}
+}

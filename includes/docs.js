@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-const TRAFFIC_SOURCE_MEDIUM = {
-  traffic_source_medium: `Traffic source medium`
+const ga4_events_columns = {
+  traffic_source_medium: "Traffic source medium",
+  traffic_source_name: "Name of traffic source",
 };
 
-const TRAFFIC_SOURCE_NAME = {
-  traffic_source_name: `Name of traffic source`
-};
-
-
-const ga4_events = {
-  ...TRAFFIC_SOURCE_MEDIUM,
-  ...TRAFFIC_SOURCE_NAME,
-};
-module.exports = {
-  ga4_events
+const ga4_pseudo_users_columns = {
+  pseudo_user_id: "ID for the Pseudonymous namespace",
+  stream_id: "Data-stream ID",
+  device_category: "Category of the device (mobile, tablet, desktop)"
 }
+
+const ga4_pseudo_user_privacy_info_columns = {
+  ads_personalization_allowed: "If a user is eligible for ads personalization, isAdsPersonalizationAllowed returns true. If a user is not eligible for ads personalization, isAdsPersonalizationAllowed returns false.",
+  ads_tracking_limited: "The device Limit Ad Tracking setting. Possible values include: true, false, and (not set)"
+}
+
+module.exports = {ga4_events_columns, ga4_pseudo_users_columns, ga4_pseudo_user_privacy_info_columns};
