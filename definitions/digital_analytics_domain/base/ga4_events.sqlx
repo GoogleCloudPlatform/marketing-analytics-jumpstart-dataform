@@ -43,6 +43,7 @@ config {
 
 -- TODO: not clear if the select from subselect is needed here.
 SELECT
+<<<<<<< HEAD
   --traffic_source dimension
   ${notNullString('first_traffic_source_medium','first_traffic_source_medium')},
   ${notNullString('first_traffic_source_name','first_traffic_source_name')},
@@ -64,6 +65,17 @@ SELECT
   ${notNullString('traffic_source_merchant_center_id','traffic_source_merchant_center_id')},
   CASE WHEN event_params_dclid IS NOT NULL THEN "display_and_video_360" WHEN event_params_gclid IS NOT NULL THEN "ads" ELSE "" END as advertiser_platform,
   --geo dimension
+=======
+  ${notNullString('traffic_source_medium')},
+  ${notNullString('traffic_source_name')},
+  ${notNullString('traffic_source')},
+  ${notNullString('collected_traffic_source_manual_campaign_id')},
+  ${notNullString('collected_traffic_source_manual_campaign_name')},
+  ${notNullString('collected_traffic_source_manual_source')},
+  ${notNullString('collected_traffic_source_manual_medium')},
+  ${notNullString('collected_traffic_source_manual_term')},
+  ${notNullString('collected_traffic_source_manual_content')},
+>>>>>>> refs/heads/main
   ${stripNotSet('continent')}, 
   ${stripNotSet('subcontinent')},
   ${stripNotSet('country')},
@@ -93,12 +105,22 @@ SELECT
   --user dimension
   user_pseudo_id,
   user_id,
+<<<<<<< HEAD
   TIMESTAMP_MICROS(user_first_touch_timestamp) as user_first_touch_timestamp,
   is_active_user,
   --session fact
+=======
+  ${notNullString('language')},
+  COALESCE(left(language, 2), "") as normalized_language,
+  COALESCE(device_advertising_id, "") device_advertising_id,
+>>>>>>> refs/heads/main
   ga_session_id,
   ga_session_number,
+<<<<<<< HEAD
   COALESCE(CASE WHEN session_engaged_during_event IS NULL THEN CAST(event_engaged_session_event AS BOOL) ELSE CAST(session_engaged_during_event AS BOOL) END, FALSE) as session_engaged_during_event,
+=======
+  SAFE_CAST(session_engaged_during_event AS BOOL) as session_engaged_during_event,
+>>>>>>> refs/heads/main
   engagement_time_msec,
   -- page dimension
   page_location, 
@@ -109,8 +131,13 @@ SELECT
   ecommerce,
   user_ltv_revenue,
   user_ltv_currency,
+<<<<<<< HEAD
   -- items fact
   items,
+=======
+  TIMESTAMP_MICROS(user_first_touch_timestamp) user_first_touch_timestamp,
+  ${sql.selectFieldsFromRepeatedRecord('items', ga4.eventsItemsSelectedColumns, ga4.eventsItemsSafeCastColumns)},
+>>>>>>> refs/heads/main
   STRUCT (
       privacy_info.analytics_storage = 'No' as analytics_excluded,
       privacy_info.ads_storage = 'No' as ads_excluded,
@@ -119,6 +146,7 @@ SELECT
   table_suffix
 FROM (
 SELECT
+<<<<<<< HEAD
     LOWER(traffic_source.medium) as first_traffic_source_medium, 
     LOWER(traffic_source.name) as first_traffic_source_name, 
     LOWER(traffic_source.source) as first_traffic_source,
@@ -131,6 +159,17 @@ SELECT
     LOWER(collected_traffic_source.gclid) as traffic_source_gclid,
     LOWER(collected_traffic_source.dclid) as traffic_source_gmp_id,
     LOWER(collected_traffic_source.srsltid) as traffic_source_merchant_center_id,
+=======
+    LOWER(traffic_source.medium) as traffic_source_medium, 
+    LOWER(traffic_source.name) as traffic_source_name, 
+    LOWER(traffic_source.source) as traffic_source, 
+    collected_traffic_source.manual_campaign_id as collected_traffic_source_manual_campaign_id,
+    LOWER(collected_traffic_source.manual_campaign_name) as collected_traffic_source_manual_campaign_name,
+    LOWER(collected_traffic_source.manual_source) as collected_traffic_source_manual_source,
+    LOWER(collected_traffic_source.manual_medium) as collected_traffic_source_manual_medium,
+    LOWER(collected_traffic_source.manual_term) as collected_traffic_source_manual_term,
+    LOWER(collected_traffic_source.manual_content) as collected_traffic_source_manual_content,
+>>>>>>> refs/heads/main
     geo.continent as continent,
     geo.sub_continent as subcontinent,
     geo.country as country,
@@ -147,7 +186,7 @@ SELECT
     device.web_info.browser_version as device_web_browser_version,
     app_info.install_store as app_store,
     app_info.version as app_version,
-    event_timestamp,
+    SAFE_CAST(event_timestamp AS INT64) as event_timestamp,
     event_name,
     platform,
     stream_id,
@@ -157,18 +196,19 @@ SELECT
     device.advertising_id as device_advertising_id,
     STRUCT (
       ${stripNotSet('ecommerce.transaction_id', 'transaction_id')},
-      CAST(ecommerce.purchase_revenue_in_usd AS NUMERIC) as purchase_revenue_in_usd,
+      SAFE_CAST(ecommerce.purchase_revenue_in_usd AS NUMERIC) as purchase_revenue_in_usd,
       ecommerce.total_item_quantity as total_item_quantity,
       ecommerce.refund_value_in_usd as refund_value_in_usd
     ) ecommerce,
     ${intEventParam("ga_session_id")} as ga_session_id,
     ${intEventParam("ga_session_number")} as ga_session_number,
-    (SELECT COALESCE(ep.value.int_value, CAST(ep.value.string_value AS INT64)) FROM UNNEST(event_params) ep WHERE ep.key = "session_engaged" LIMIT 1) as session_engaged_during_event,
+    (SELECT COALESCE(ep.value.int_value, SAFE_CAST(ep.value.string_value AS INT64)) FROM UNNEST(event_params) ep WHERE ep.key = "session_engaged" LIMIT 1) as session_engaged_during_event,
     ${intEventParam("engagement_time_msec")} as engagement_time_msec,
     ${stringEventParam("page_location")} as page_location,
     ${stringEventParam("page_title")} as page_title,
     ${intEventParam("percent_scrolled")} as percent_scrolled,
     ${stringEventParam("link_url")} as outbound_click_url,
+<<<<<<< HEAD
     ${stringEventParam("medium")} as event_params_medium,
     ${stringEventParam("source")} as event_params_source,
     ${intEventParam("engaged_session_event")} as event_engaged_session_event,
@@ -177,8 +217,11 @@ SELECT
     ${stringEventParam("dclid")} as event_params_dclid,
     ${stringEventParam("gclid")} as event_params_gclid,
     CAST(user_ltv.revenue AS NUMERIC) as user_ltv_revenue,
+=======
+    SAFE_CAST(user_ltv.revenue AS NUMERIC) as user_ltv_revenue,
+>>>>>>> refs/heads/main
     user_ltv.currency as user_ltv_currency,
-    user_first_touch_timestamp,
+    SAFE_CAST(user_first_touch_timestamp AS INT64) as user_first_touch_timestamp,
     items,
     privacy_info,
     is_active_user,

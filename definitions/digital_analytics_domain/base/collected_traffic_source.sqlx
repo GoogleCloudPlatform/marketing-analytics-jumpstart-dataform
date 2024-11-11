@@ -1,0 +1,44 @@
+/*
+ * Copyright 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {
+  type: "incremental",
+  schema: functions.baseSchema("ga4"),
+  description: "Collected traffic source dimension",
+  uniqueKey: ga4.CollectedTrafficSourceUniqueColumns,
+  bigquery: {
+    clusterBy: ["collected_traffic_source_id"]
+  },
+  tags: ['ga4']
+  }
+
+WITH source AS
+  (SELECT DISTINCT
+    ${ga4.collectedTrafficSourceUniqueColumns}
+  FROM ${ref("ga4_events")}
+  ${when(incremental(), `WHERE table_suffix BETWEEN '${ga4.incrementalSuffixStart()}' and '${ga4.incrementalSuffixEnd()}'` )}
+  )
+SELECT GENERATE_UUID() as collected_traffic_source_id, source.*, CURRENT_TIMESTAMP() as created_ts FROM source
+  ${when(incremental(), `
+  WHERE NOT EXISTS(
+    SELECT * FROM ${self()} target WHERE
+    ${sql.multiColumnEqualsClause('source', 'target', ga4.collectedTrafficSourceUniqueColumns)}
+  )
+  ` )}
+
+post_operations {
+  ${when(incremental(), 'SELECT "ignore_it"', 
+    `ALTER TABLE ${self()} ADD PRIMARY KEY (collected_traffic_source_id) NOT ENFORCED` )}
+}

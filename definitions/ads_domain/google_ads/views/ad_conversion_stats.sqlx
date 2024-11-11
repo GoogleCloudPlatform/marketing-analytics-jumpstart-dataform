@@ -34,7 +34,7 @@ js {
     metrics_conversions_value,
     metrics_conversions`;
     
-  const union = functions.buildViewUnion(columns, "ads", "p_ads_AdConversionStats", lookbackDays);
+  const union = functions.buildAdsViewUnion(columns, "ads_AdConversionStats", lookbackDays);
 }
 SELECT
   "GOOGLE_ADS" AS ad_system,

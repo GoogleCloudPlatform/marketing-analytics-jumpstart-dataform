@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Google LLC
+ * Copyright 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,27 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-config { 
+config {  
   type: "view",
-  schema: functions.baseSchema("ads"),
-  tags: ["ads"]
+  schema: functions.productSchema("ga4"),
+  tags: ['ga4']
 }
-js {
-  const columns =
-    `customer_id,
-    campaign_id,
-    campaign_name,
-    campaign_status`;
 
-  const union = functions.buildAdsViewUnion(columns, "ads_Campaign");
-}
-SELECT DISTINCT
-  "GOOGLE_ADS" AS ad_system,
-  CAST(customer_id AS STRING) AS account_id,
-  CAST(campaign_id AS STRING) AS campaign_id,
-  campaign_name,
-  campaign_status
-FROM (
-${union}
-)
-QUALIFY ROW_NUMBER() OVER (PARTITION BY CAST(customer_id AS STRING), CAST(campaign_id AS STRING)) = 1
+SELECT * EXCEPT(created_ts)
+ FROM ${ref({schema: functions.baseSchema("ga4"), name: "collected_traffic_source"})}

@@ -20,14 +20,24 @@ config {
     tags: ['ga4', 'vbb']
 }
 js {
-    const eventDateField = "event_date"
-    const selectFields = sql.aggregatedVBBColumns(eventDateField, "Dt", ga4.aggregatedVBBColumns);
+    const eventDateField = "event_date";
+    const eventNameField = "event_name";
+    const eventTimestampField = "event_timestamp";
+    const eventDateAlias = "Dt"
 }
+
+WITH Base_Events AS (
+  SELECT
+    EXTRACT(date from ${eventTimestampField}) AS ${eventDateField},
+    ${eventNameField}
+  FROM
+    ${ref({schema: functions.baseSchema("ga4"), name: "event"})}
+  WHERE
+    ${eventTimestampField} BETWEEN TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -365 DAY) AND CURRENT_TIMESTAMP()
+)
 SELECT
-  DISTINCT ${selectFields}
+  ${sql.aggregatedVBBColumns(eventDateField, eventDateAlias, eventNameField, ga4.aggregatedVBBColumns)}
 FROM
-  ${ref({schema: functions.productSchema("ga4"), name: "event"})}
-WHERE
-  ${eventDateField} >= DATE_SUB(CURRENT_DATE(), INTERVAL 1 YEAR)
-ORDER BY
-  ${eventDateField} ASC
+  Base_Events
+GROUP BY
+  ${eventDateField}

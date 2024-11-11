@@ -62,11 +62,46 @@ function percentChangeColumn(metric, granularity){
     return result;
 }
 
-function aggregatedVBBColumns(eventDateField, eventDateAlias, columns) {
-    let result = `${eventDateField} as ${eventDateAlias}`;
+function aggregatedVBBColumns(eventDateField, eventDateAlias, eventNameField, columns) {
+    let result = `${eventDateField} AS ${eventDateAlias}`;
     for(const event_type in columns) {
-        result = result + `,\n  COUNTIF(event_name = "${event_type}") OVER(PARTITION BY ${eventDateField}) as ${columns[event_type]}`;
+        result = result + `,\n  COUNTIF(${eventNameField} = "${event_type}") AS ${columns[event_type]}`;
     }
     return result;
 }
-module.exports = {multiColumnEqualsClause, parseIsoWeekYear, isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers, webBrowserCaseStatement, aggregatedVBBColumns};
+
+function selectFieldsFromRepeatedRecord(fieldName, columns, safe_cast_columns) {
+    let result = "";
+    const tmpAlias = `${fieldName}ta`;
+    const doubleSpace = "  "
+    columns.forEach(column => {
+        if(result.length > 0) {
+            result = result + ',\n';
+        }
+        result = result + `${doubleSpace}${doubleSpace}`;
+        if(column in safe_cast_columns) {
+            result = result + 'SAFE_CAST(';
+        }
+        result = result + `${tmpAlias}.${column}`;
+        if(column in safe_cast_columns) {
+            result = result + ` AS ${safe_cast_columns[column]})`;
+        }
+        result = result + ` AS ${column}`;
+    })
+    return 'ARRAY( SELECT STRUCT (\n' + result + `\n${doubleSpace}) FROM UNNEST(${fieldName}) AS ${tmpAlias} ) AS ${fieldName}`;
+}
+
+function selectMultiColumnFromFirstEntry(table_alias, sorting_column, sorting_order, columns) {
+    let result = "";
+    columns.forEach(column => {
+        if( result.length > 0) {
+            result = result + ',\n  ';
+        }
+        result = result + 'ARRAY_AGG('+table_alias+' ORDER BY '+sorting_column+' '+sorting_order+' LIMIT 1)[OFFSET(0)].'+column+' AS '+column;
+    });
+    return result;
+}
+module.exports = {multiColumnEqualsClause, parseIsoWeekYear,
+isoYearWeekColumn, percentChangeColumn, dashboardWebBrowsers,
+webBrowserCaseStatement, aggregatedVBBColumns,
+selectFieldsFromRepeatedRecord, selectMultiColumnFromFirstEntry};

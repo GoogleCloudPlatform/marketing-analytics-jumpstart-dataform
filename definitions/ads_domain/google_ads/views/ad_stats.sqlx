@@ -32,7 +32,7 @@ js {
     metrics_clicks,
     metrics_cost_micros`;
 
-  const union = functions.buildViewUnion(columns, "ads", "p_ads_AdBasicStats", lookbackDays)
+  const union = functions.buildAdsViewUnion(columns, "ads_AdBasicStats", lookbackDays)
 }
 SELECT
   "GOOGLE_ADS" AS ad_system,
