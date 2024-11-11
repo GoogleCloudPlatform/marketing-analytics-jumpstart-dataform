@@ -77,9 +77,9 @@ SELECT
   COALESCE(SPLIT(device_web_browser_version, '.')[OFFSET(0)], "") as normalized_device_web_browser_version,
   COALESCE(app_store, "") as app_store,
   COALESCE(app_version, "") as app_version,
-  language,
+  ${notNullString('language', 'language')},
   COALESCE(left(language, 2), "") as normalized_language,
-  COALESCE(device_advertising_id, "") device_advertising_id,
+  COALESCE(device_advertising_id, "") as device_advertising_id,
   --event fact
   TIMESTAMP_MICROS(event_timestamp) as event_timestamp,
   event_name,
@@ -89,13 +89,8 @@ SELECT
   user_pseudo_id,
   user_id,
   TIMESTAMP_MICROS(user_first_touch_timestamp) as user_first_touch_timestamp,
-  COALESCE(left(language, 2), "") as normalized_language,
-  COALESCE(device_advertising_id, "") device_advertising_id,
   is_active_user,
   --session fact
-  ${notNullString('language', 'language')},
-  COALESCE(left(language, 2), "") as normalized_language,
-  COALESCE(device_advertising_id, "") device_advertising_id,
   ga_session_id,
   ga_session_number,
   COALESCE(CASE WHEN session_engaged_during_event IS NULL THEN CAST(event_engaged_session_event AS BOOL) ELSE CAST(session_engaged_during_event AS BOOL) END, FALSE) as session_engaged_during_event,
@@ -118,7 +113,6 @@ SELECT
       privacy_info.ads_storage = 'No' as ads_excluded,
       privacy_info.uses_transient_token = 'Yes' as uses_transient_token
   ) as privacy_info,
-  is_active_user,
   table_suffix
 FROM (
 SELECT
