@@ -1,0 +1,93 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config { 
+  type: "table",
+  schema: functions.baseSchema("ads"),
+  tags: ["ads"]
+} 
+
+WITH landing AS (
+  SELECT DISTINCT
+    ad_system,
+    account_id,
+    auto_tagging_enabled,
+    currency,
+    account_name,
+    is_manager,
+    is_test_account,
+    timezone
+  FROM ${ref("customer")} customer
+),
+warehouse AS (
+  # Rows from Warehouse
+  SELECT
+    ad_system,
+    account_id,
+    auto_tagging_enabled,
+    currency,
+    account_name,
+    is_manager,
+    is_test_account,
+    timezone
+  FROM ${ref("dim_customer")}
+)
+SELECT 
+  l, w,
+  CASE
+    WHEN w.account_id IS NULL THEN "APPEND"
+    WHEN NOT (
+      l.ad_system = w.ad_system AND
+      l.account_id = w.account_id AND
+      l.auto_tagging_enabled = w.auto_tagging_enabled AND
+      l.currency = w.currency AND
+      l.account_name = w.account_name AND
+      l.is_manager = w.is_manager AND
+      l.is_test_account = w.is_test_account AND
+      l.timezone = w.timezone
+    )
+    THEN "MODIFY"
+    ELSE "NO_ACTION"
+  END disposition,
+  CURRENT_TIMESTAMP() AS exec_timestamp
+FROM landing l
+LEFT JOIN warehouse w ON
+  l.ad_system = w.ad_system AND
+  l.account_id = w.account_id
+
+post_operations {
+  UPDATE ${ref("dim_customer")} d
+  SET
+    account_name = t.l.account_name,
+    currency = t.l.currency,
+    timezone = t.l.timezone
+  FROM ${self()} t
+  WHERE 
+    d.account_id = t.w.account_id AND
+    t.disposition = "MODIFY"
+  ---
+  INSERT INTO ${ref("dim_customer")}
+  SELECT 
+    COALESCE(l.account_id, GENERATE_UUID())as account_id,
+    l.ad_system as ad_system,
+    l.auto_tagging_enabled as auto_tagging_enabled,
+    l.currency as currency,
+    l.account_name as account_name,
+    l.is_manager as is_manager,
+    l.is_test_account as is_test_account,
+    l.timezone as timezone
+  FROM ${self()}
+  WHERE disposition IN ("APPEND", "MODIFY")
+}

@@ -5,12 +5,14 @@ This Dataform project processes various marketing data sources and creates a Mar
 * Retain historical marketing data
 * Create high performance dashboards
 * Perform Data Analytics
+* Implement GenAI use cases
 * Train ML models
 
 ## MDS structure
 ### Domains
-There are currently two domains, Ads domain and GA4 domain. Only GA4 domain is fully functional. 
-Ads domain contains initial scripts to process Ads BigQuery Data Transfers, but is not tested.
+There are currently two domains:
+* Google Analytics 4
+* Google Ads
 
 All assets are tagged with domain-specific tags - "ga4" or "ads".
 
