@@ -184,4 +184,5 @@ SELECT
 FROM ${ref('events' + dataform.projectConfig.vars.ga4_export_table_suffix)}
   -- Exclude extra day exports 
   WHERE NOT STARTS_WITH(_TABLE_SUFFIX, "intraday")
+  OR NOT STARTS_WITH(_TABLE_SUFFIX, "fresh")
 )
