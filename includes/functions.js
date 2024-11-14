@@ -33,6 +33,27 @@ function buildViewUnion(columns, system, table_prefix, lookback_days){
     return output;
 }
 
+function buildAdsViewUnion(columns, table_prefix, lookback_days){
+    var output = "";
+
+    var tables = constants.settings["ads"];
+
+    tables.forEach( function (table_ref, index) {
+        var table_name = "`" + table_ref["project"] + "`." + table_ref["dataset"] + ".`" + table_prefix + table_ref["table_suffix"] + "`"
+        if ( index > 0 ) {
+            output = output.concat("\n  UNION ALL\n")
+        }
+        output = output.concat("  SELECT DISTINCT\n    ", columns, "\n  FROM ", table_name)
+        if ( typeof lookback_days !== "undefined" ){
+            output = output.concat("\n  WHERE _DATA_DATE >= DATE_SUB(_LATEST_DATE, INTERVAL ", lookback_days, " DAY) ")
+        } else {
+            output = output.concat("\n  WHERE _DATA_DATE = _LATEST_DATE")
+        }
+    });
+
+    return output;
+}
+
 function baseSchema(domain) {
     return dataform.projectConfig.defaultSchema + "_" + domain + "_base_" + dataform.projectConfig.vars.env;
 }
@@ -41,4 +62,4 @@ function productSchema(domain) {
     return dataform.projectConfig.defaultSchema + "_" + domain + "_v1_" + dataform.projectConfig.vars.env;
 }
 
-module.exports = {buildViewUnion,baseSchema, productSchema};
+module.exports = {buildViewUnion, buildAdsViewUnion, baseSchema, productSchema};

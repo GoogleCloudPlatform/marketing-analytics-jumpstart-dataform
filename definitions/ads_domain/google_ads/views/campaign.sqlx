@@ -25,7 +25,7 @@ js {
     campaign_name,
     campaign_status`;
 
-  const union = functions.buildViewUnion(columns, "ads", "p_ads_Campaign");
+  const union = functions.buildAdsViewUnion(columns, "ads_Campaign");
 }
 SELECT DISTINCT
   "GOOGLE_ADS" AS ad_system,
@@ -36,3 +36,4 @@ SELECT DISTINCT
 FROM (
 ${union}
 )
+QUALIFY ROW_NUMBER() OVER (PARTITION BY CAST(customer_id AS STRING), CAST(campaign_id AS STRING)) = 1
