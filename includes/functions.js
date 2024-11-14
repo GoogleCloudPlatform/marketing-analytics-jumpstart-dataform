@@ -55,11 +55,11 @@ function buildAdsViewUnion(columns, table_prefix, lookback_days){
 }
 
 function baseSchema(domain) {
-    return dataform.projectConfig.defaultSchema + "_" + domain + "_base_" + dataform.projectConfig.vars.env;
+    return dataform.projectConfig.defaultSchema + "_" + domain + "_base_" + dataform.projectConfig.vars.ga4_property_id;
 }
 
 function productSchema(domain) {
-    return dataform.projectConfig.defaultSchema + "_" + domain + "_v1_" + dataform.projectConfig.vars.env;
+    return dataform.projectConfig.defaultSchema + "_" + domain + "_v1_" + dataform.projectConfig.vars.ga4_property_id;
 }
 
 module.exports = {buildViewUnion, buildAdsViewUnion, baseSchema, productSchema};

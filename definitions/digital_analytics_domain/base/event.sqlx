@@ -17,7 +17,7 @@ config {
   type: "incremental",
   schema: functions.baseSchema("ga4"),
   description: "Event fact",
-  columns: docs.ga4_events,
+  columns: docs.ga4_events_columns,
   uniqueKey: ga4.eventUniqueColumns,
   assertions: {
     rowConditions: [

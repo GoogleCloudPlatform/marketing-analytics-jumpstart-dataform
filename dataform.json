@@ -5,7 +5,7 @@
   "assertionSchema": "marketing_assertions",
   "defaultLocation": "US",
   "vars": {
-    "env": "dev",
+    "ga4_property_id": "PROPERTY_ID",
     "ga4_export_project": "PROJECT_ID",
     "ga4_export_dataset": "DATASET_NAME",
     "ga4_export_table_suffix": "_*",

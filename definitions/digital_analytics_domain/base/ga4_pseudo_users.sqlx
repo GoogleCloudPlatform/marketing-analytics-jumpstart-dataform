@@ -1,0 +1,118 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+js {
+  function intEventParam(parameter) {
+    return '(SELECT ep.value.int_value FROM UNNEST(event_params) ep WHERE ep.key = "'
+    + parameter + '" LIMIT 1)';
+  }
+  function stringEventParam(parameter) {
+    return '(SELECT ep.value.string_value FROM UNNEST(event_params) ep WHERE ep.key = "'
+    + parameter + '" LIMIT 1)';
+  }
+  function stripNotSet(expression, columnName) {
+    if(typeof columnName === 'undefined') {
+      columnName = expression;
+    }
+    return 'CASE WHEN ' + expression + '="(not set)" THEN "" ELSE ' + expression + ' END as ' + columnName
+  }
+  function notNullString(column, columnName) {
+    return 'COALESCE(' + column + ', "") as ' + columnName;
+  }
+}
+
+config { 
+  type: "view",
+  schema: functions.baseSchema("ga4"),
+  columns: docs.ga4_events,
+  description: "View into GA4 exported tables. Not be used outside of the Dataform transformation jobs.",
+  tags: ['ga4']
+}
+
+SELECT
+  pseudo_user_id,
+  stream_id,
+  TIMESTAMP_MICROS(user_last_active_timestamp_micros) as user_last_active_timestamp,
+  TIMESTAMP_MICROS(user_first_touch_timestamp_micros) as user_first_touch_timestamp,
+  PARSE_DATE('%Y%m%d', user_first_purchase_date) as user_first_purchase_date,
+  --device dimension
+  ${notNullString('device_category','device_category')},
+  ${notNullString('device_mobile_brand_name','device_mobile_brand_name')},
+  ${notNullString('device_mobile_model_name','device_mobile_model_name')},
+  ${notNullString('device_os','device_os')},
+  ${notNullString('device_unified_screen_name','device_unified_screen_name')},
+  --geo dimension
+  ${stripNotSet('continent')}, 
+  ${stripNotSet('country')},
+  ${stripNotSet('region')},
+  ${stripNotSet('city')},
+  --audiences dimension 
+  STRUCT(
+      audiences_id as id,
+      ${notNullString('audiences_name', 'name')},
+      TIMESTAMP_MICROS(IFNULL(audiences_membership_start_timestamp_micros, 0)) as membership_start_timestamp,
+      TIMESTAMP_MICROS(IFNULL(audiences_membership_expiry_timestamp_micros, 0)) as membership_expiry_timestamp,
+      IFNULL(audiences_non_personalized_ads_user, FALSE) as non_personalized_ads_user
+  ) as audiences,
+  --user_lifetime_value fact
+  STRUCT(
+      IFNULL(user_ltv.revenue_in_usd, 0.0) as revenue_in_usd,
+      IFNULL(user_ltv.sessions, 0) as sessions,
+      TIMESTAMP_MILLIS(IFNULL(user_ltv.engagement_time_millis, 0)) as engagement_timestamp,
+      IFNULL(user_ltv.purchases, 0) as purchases,
+      IFNULL(user_ltv.engaged_sessions, 0) as engaged_sessions,
+      SAFE_DIVIDE(IFNULL(user_ltv.session_duration_micros, 0.0),1000000.0) as session_duration
+  ) as user_ltv,
+  --predictions fact
+  STRUCT(
+      IFNULL(predictions.purchase_score_7d, 0.0) + IFNULL(predictions.in_app_purchase_score_7d, 0.0) as purchase_score_7d,
+      IFNULL(predictions.churn_score_7d, 0.0) as churn_score_7d,
+      IFNULL(predictions.revenue_28d_in_usd, 0.0) as revenue_28d_in_usd
+  ) as ga4_predictions,
+  --privacy_info dim
+  privacy_info.is_limited_ad_tracking = 'true' as ads_tracking_limited,
+  privacy_info.is_ads_personalization_allowed = 'true' as ads_personalization_allowed,
+  last_change_date,
+  last_updated_date,
+  table_suffix
+FROM (
+SELECT
+    pseudo_user_id,
+    stream_id,
+    user_info.last_active_timestamp_micros as user_last_active_timestamp_micros,
+    user_info.user_first_touch_timestamp_micros as user_first_touch_timestamp_micros,
+    user_info.first_purchase_date as user_first_purchase_date,
+    device.operating_system as device_os,
+    device.category as device_category,
+    device.mobile_brand_name as device_mobile_brand_name,
+    device.mobile_model_name as device_mobile_model_name,
+    device.unified_screen_name as device_unified_screen_name,
+    geo.city as city,
+    geo.country as country,
+    geo.continent as continent,
+    geo.region as region,
+    audiences.id as audiences_id,
+    audiences.name as audiences_name,
+    audiences.membership_start_timestamp_micros as audiences_membership_start_timestamp_micros,
+    audiences.membership_expiry_timestamp_micros as audiences_membership_expiry_timestamp_micros,
+    audiences.npa as audiences_non_personalized_ads_user,
+    user_ltv,
+    predictions,
+    privacy_info,
+    PARSE_DATE('%Y%m%d', occurrence_date) as last_change_date,
+    PARSE_DATE('%Y%m%d', last_updated_date) as last_updated_date,
+    _TABLE_SUFFIX as table_suffix
+FROM ${ref('pseudonymous_users' + dataform.projectConfig.vars.ga4_export_table_suffix)}, UNNEST(audiences) as audiences
+)

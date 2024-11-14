@@ -70,6 +70,19 @@ const eventUniqueColumns = [
     "event_name"
 ];
 
+const pseudoUsersUniqueColumns = [
+    "pseudo_user_id",
+    "stream_id", 
+    "user_first_touch_timestamp",
+];
+
+const pseudoUserPrivacyInfoUniqueColumns = [
+    "ads_tracking_limited",
+    "ads_personalization_allowed",
+    "last_change_date",
+    "last_updated_date",
+];
+
 const locationUniqueColumns = [
     "continent", 
     "subcontinent", 
@@ -152,9 +165,10 @@ const eventTypePredicted = "predictive";
 const eventTypeCustom = "custom";
 
 module.exports = {incrementalSuffixStart, incrementalSuffixEnd, 
-deviceUniqueColumns, normalizedDeviceUniqueColumns,
-eventUniqueColumns, locationUniqueColumns, trafficSourceUniqueColumns,
-browserUniqueColumns, eventTypeTagged, eventTypePredicted, eventTypeCustom,
-aggregatedVBBColumns, eventsItemsSelectedColumns, collectedTrafficSourceUniqueColumns,
-eventsItemsSafeCastColumns};
+deviceUniqueColumns, normalizedDeviceUniqueColumns, eventUniqueColumns, 
+pseudoUsersUniqueColumns, locationUniqueColumns, trafficSourceUniqueColumns, 
+browserUniqueColumns, eventTypeTagged, eventTypePredicted, 
+eventTypeCustom, aggregatedVBBColumns, eventsItemsSelectedColumns, 
+collectedTrafficSourceUniqueColumns, eventsItemsSafeCastColumns,
+pseudoUserPrivacyInfoUniqueColumns};
 

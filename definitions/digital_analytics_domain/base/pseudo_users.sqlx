@@ -1,0 +1,64 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config {
+  type: "incremental",
+  schema: functions.baseSchema("ga4"),
+  description: "Pseudo users fact",
+  columns: docs.ga4_pseudo_users_columns,
+  uniqueKey: ga4.pseudoUsersUniqueColumns,
+  bigquery: {
+    // TODO: Partionioning and clustering on this table are best estimates
+    partitionBy: "DATETIME_TRUNC(user_first_touch_timestamp, DAY)",
+    clusterBy: ["pseudo_user_id", "stream_id"]
+  },
+  tags: ['ga4']
+  }
+
+SELECT
+  pseudo_user_id,
+  stream_id,
+  user_last_active_timestamp,
+  user_first_touch_timestamp,
+  user_first_purchase_date,
+  --device_id from pseudo_user_device dimension
+  --geo_id from pseudo_user_geo dimension
+  --audiences_id from audiences dimension
+  --user_lifetime_value_id from pseudo_user_lifetime_value fact
+  --predictions_id from pseudo_user_ga4_predictions fact
+  --privacy_info_id from pseudo_user_privacy_info dim
+  pi.privacy_info_id,
+  source.last_change_date,
+  source.last_updated_date
+  FROM ${ref("ga4_pseudo_users")} source
+  LEFT JOIN ( SELECT * FROM ${ref(functions.baseSchema("ga4"),"pseudo_user_privacy_info")}) pi  
+    USING (${ga4.pseudoUserPrivacyInfoUniqueColumns})
+
+${when(incremental(), `WHERE table_suffix BETWEEN '${ga4.incrementalSuffixStart()}' and '${ga4.incrementalSuffixEnd()}'
+  AND NOT EXISTS(
+    SELECT * FROM ${self()} target WHERE 
+    ${sql.multiColumnEqualsClause('source', 'target', ga4.pseudoUsersUniqueColumns)}
+    )`
+    ) }
+  
+post_operations {
+  ${when(! incremental(), `ALTER TABLE ${self()} ADD PRIMARY KEY (pseudo_user_id) NOT ENFORCED;` )}
+  ALTER TABLE ${self()} ADD CONSTRAINT IF NOT EXISTS 
+    fk_pseudo_user_pseudo_user_privacy_info FOREIGN KEY (privacy_info_id) 
+    REFERENCES ${ref(functions.baseSchema("ga4"),"pseudo_user_privacy_info")}(privacy_info_id) NOT ENFORCED;
+  --ALTER TABLE ${self()} ADD CONSTRAINT IF NOT EXISTS 
+  --  fk_event_collected_traffic_source FOREIGN KEY (collected_traffic_source_id) 
+  --  REFERENCES ${ref(functions.baseSchema("ga4"),"collected_traffic_source")}(collected_traffic_source_id) NOT ENFORCED;
+}
