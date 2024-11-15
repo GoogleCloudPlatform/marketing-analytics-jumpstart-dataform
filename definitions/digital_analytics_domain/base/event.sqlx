@@ -43,6 +43,21 @@ pre_operations {
   'SELECT "ignore_it"')
     }
 }
+post_operations {
+  -- Remove data not needed according to settings.
+  ${when(incremental(), `DECLARE latest_datetime DATETIME;
+    SET latest_date = (
+      SELECT MAX(DATETIME_TRUNC(event_timestamp, DAY))
+      FROM ${self()}
+    )`,
+  `DELETE FROM ${self()}
+    WHERE DATETIME_TRUNC(event_timestamp, DAY)
+      < DATETIME_SUB(
+        latest_datetime,
+        INTERVAL ${dataform.projectConfig.vars.ga4_metrics_lookback_days} DAY
+      )`)
+    }
+}
   SELECT
     GENERATE_UUID() as event_id,
     CASE 
