@@ -31,6 +31,8 @@ js {
   function notNullString(column, columnName) {
     return 'COALESCE(' + column + ', "") as ' + columnName;
   }
+  // Exclude extra day exports 
+  const excludeExtraDays = 'NOT STARTS_WITH(_TABLE_SUFFIX, "intraday") OR NOT STARTS_WITH(_TABLE_SUFFIX, "fresh")';
 }
 
 config { 
@@ -40,7 +42,13 @@ config {
   description: "View into GA4 exported tables. Not be used outside of the Dataform transformation jobs.",
   tags: ['ga4']
 }
-
+DECLARE latest_date DATE;
+SET latest_date = (
+  SELECT MAX(SAFE.PARSE_DATE(_TABLE_SUFFIX))
+  FROM ${ref('events' + dataform.projectConfig.vars.ga4_export_table_suffix)}
+  -- Exclude extra day exports 
+  WHERE ${excludeExtraDays}
+);    
 SELECT
   --traffic_source dimension
   ${notNullString('traffic_source_medium', 'traffic_source_medium')},
@@ -182,7 +190,10 @@ SELECT
     is_active_user,
     _TABLE_SUFFIX as table_suffix
 FROM ${ref('events' + dataform.projectConfig.vars.ga4_export_table_suffix)}
-  -- Exclude extra day exports 
-  WHERE NOT STARTS_WITH(_TABLE_SUFFIX, "intraday")
-  OR NOT STARTS_WITH(_TABLE_SUFFIX, "fresh")
+WHERE ${excludeExtraDays}
+  AND _TABLE_SUFFIX > 
+    FORMAT_DATE("%Y%m%d", DATE_SUB(
+      latest_date,
+      INTERVAL ${dataform.projectConfig.vars.ga4_metrics_lookback_days} DAY
+    ))
 )
