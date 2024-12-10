@@ -1,0 +1,70 @@
+  /*
+  * Copyright 2024 Google LLC
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *     https://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+config {
+    type: "view",
+    schema: functions.baseSchema("ads"),
+    tags: ["ads"]
+}
+
+js {
+    const campaign_columns =
+        `campaign_id,
+        bidding_strategy_name,
+        CASE
+            WHEN campaign_bidding_strategy IS NULL THEN 'default'
+            ELSE ARRAY_REVERSE(SPLIT(campaign_bidding_strategy, '/'))[SAFE_OFFSET(0)]
+        END AS bidding_strategy_id,
+        campaign_bidding_strategy_type,
+        _DATA_DATE`;
+
+    const bid_goal_columns =
+        `customer_id,
+        SAFE_CAST(bidding_strategy_id AS STRING) AS bidding_strategy_id,
+        bidding_strategy_name,
+        bidding_strategy_type,
+        bidding_strategy_target_roas_target_roas`;
+    
+    const bid_goal_stats_columns =
+        `SAFE_CAST(bidding_strategy_id AS STRING) AS bidding_strategy_id,
+        metrics_cost_micros / 1000000 AS cost,
+        metrics_conversions_value AS revenue`;
+
+    const campaign_source = functions.buildAdsViewUnion(campaign_columns, "ads_Campaign");
+    const bid_goal_source = functions.buildAdsViewUnion(bid_goal_columns, "ads_BidGoal");
+    const bid_goal_stats_source = functions.buildAdsViewUnion(bid_goal_stats_columns, "ads_BidGoalStats");
+}
+
+SELECT
+  DISTINCT "GOOGLE_ADS" AS ad_system,
+  CAST(c.campaign_id AS STRING) AS campaign_id,
+  c.bidding_strategy_name,
+  c.bidding_strategy_id,
+  campaign_bidding_strategy_type,
+  bg.bidding_strategy_name bid_s_name,
+  bidding_strategy_type,
+  bidding_strategy_target_roas_target_roas AS target_roas,
+  cost,
+  revenue,
+  _DATA_DATE AS data_date
+FROM ( ${campaign_source} ) AS c
+LEFT JOIN ( ${bid_goal_source} ) bg
+ON
+  c.bidding_strategy_id = bg.bidding_strategy_id
+LEFT JOIN ( ${bid_goal_stats_source}) AS bgs
+ON
+c.bidding_strategy_id = bgs.bidding_strategy_id
+
+
