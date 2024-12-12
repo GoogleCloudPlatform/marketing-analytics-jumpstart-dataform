@@ -57,12 +57,19 @@ SELECT
   CASE
     
     WHEN (
-      l.campaign_id = w.campaign_id AND
-      l.bidding_strategy_id = w.bidding_strategy_id AND
-      l.data_date = w.data_date 
+      w.campaign_id IS NULL 
     )
-    THEN "MODIFY"
-    ELSE "APPEND"
+    THEN "APPEND"
+    WHEN NOT (
+        l.bidding_strategy_name = w.bidding_strategy_name AND 
+        l.campaign_bidding_strategy_type = w.campaign_bidding_strategy_type AND
+        l.bid_s_name = w.bid_s_name AND
+        l.bidding_strategy_type = w.bidding_strategy_type AND
+        l.bidding_strategy_target_roas_target_roas = w.target_roas AND
+        l.cost = w.cost AND
+        l.revenue = w.revenue
+    ) THEN "MODIFY"
+    ELSE "NO_ACTION"
   END disposition,
   CURRENT_TIMESTAMP() AS exec_timestamp
 FROM landing l
