@@ -1,0 +1,118 @@
+/*
+ * Copyright 2023 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+config { 
+  type: "table",
+  schema: functions.baseSchema("ads"),
+  dependencies: [ "update_dim_ads"],
+  tags: ["ads"]
+}
+
+WITH landing AS (
+  SELECT
+    ad_system,
+    campaign_id,
+    bidding_strategy_name,
+    bidding_strategy_id,
+    campaign_bidding_strategy_type,
+    bid_s_name,
+    bidding_strategy_type,
+    bidding_strategy_target_roas_target_roas,
+    cost,
+    revenue,
+    data_date
+  FROM ${ref("campaign_strategies")} l
+  WHERE data_date = DATE(CURRENT_TIMESTAMP) - 1
+),
+warehouse AS (
+  # Rows from Warehouse
+  SELECT
+    ad_system,
+    campaign_id,
+    bidding_strategy_name,
+    bidding_strategy_id,
+    campaign_bidding_strategy_type,
+    bid_s_name,
+    bidding_strategy_type,
+    target_roas,
+    cost,
+    revenue,
+    data_date
+  FROM ${ref("bid_strategy_roas")}
+)
+SELECT 
+  l, w,
+  CASE
+    
+    WHEN (
+      w.campaign_id IS NULL 
+    )
+    THEN "APPEND"
+    WHEN NOT (
+        l.bidding_strategy_name = w.bidding_strategy_name AND 
+        l.campaign_bidding_strategy_type = w.campaign_bidding_strategy_type AND
+        l.bid_s_name = w.bid_s_name AND
+        l.bidding_strategy_type = w.bidding_strategy_type AND
+        l.bidding_strategy_target_roas_target_roas = w.target_roas AND
+        l.cost = w.cost AND
+        l.revenue = w.revenue
+    ) THEN "MODIFY"
+    ELSE "NO_ACTION"
+  END disposition,
+  CURRENT_TIMESTAMP() AS exec_timestamp
+FROM landing l
+LEFT JOIN warehouse w ON
+  l.campaign_id = w.campaign_id AND
+  l.bidding_strategy_id = w.bidding_strategy_id 
+
+
+
+post_operations {
+  # Update older versions of the fact
+  UPDATE ${ref("bid_strategy_roas")} f
+  SET 
+
+    bidding_strategy_name = t.l.bidding_strategy_name,
+    bidding_strategy_id = t.l.bidding_strategy_id,
+    campaign_bidding_strategy_type = t.l.campaign_bidding_strategy_type,
+    bid_s_name = t.l.bid_s_name,
+    bidding_strategy_type = t.l.bidding_strategy_type,
+    target_roas = SAFE_CAST(t.l.bidding_strategy_target_roas_target_roas AS NUMERIC),
+    cost = SAFE_CAST(t.l.cost AS NUMERIC),
+    revenue = SAFE_CAST(t.l.revenue AS NUMERIC)
+
+
+  FROM ${self()} t
+  WHERE 
+
+    t.disposition = "MODIFY"
+---
+# Insert the new versions of the fact
+  INSERT INTO ${ref("bid_strategy_roas")}
+  SELECT 
+    l.ad_system AS ad_system,
+    l.campaign_id AS campaign_id,
+    l.bidding_strategy_name AS bidding_strategy_name,
+    l.bidding_strategy_id AS bidding_strategy_id,
+    l.campaign_bidding_strategy_type AS campaign_bidding_strategy_type,
+    l.bid_s_name AS bid_s_name,
+    l.bidding_strategy_type AS bidding_strategy_type,
+    SAFE_CAST(l.bidding_strategy_target_roas_target_roas AS NUMERIC) AS target_roas,
+    SAFE_CAST(l.cost AS NUMERIC) AS cost,
+    SAFE_CAST(l.revenue AS NUMERIC) AS revenue,
+    l.data_date AS data_date
+  FROM ${self()}
+  WHERE disposition IN ("APPEND")
+}
