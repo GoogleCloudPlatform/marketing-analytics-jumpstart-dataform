@@ -1,6 +1,6 @@
 {
   "name": "marketing-analytics",
   "dependencies": {
-    "@dataform/core": "2.0.1"
+    "@dataform/core": "2.9.0"
   }
 }
