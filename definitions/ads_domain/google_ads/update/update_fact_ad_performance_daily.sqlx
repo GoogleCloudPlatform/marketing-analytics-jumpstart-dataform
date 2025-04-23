@@ -64,6 +64,24 @@ warehouse AS (
     clicks,
     cost
   FROM ${ref("fact_ad_performance_daily")}
+),
+landing_dedupt AS (
+  SELECT
+    ad_id,
+    date_id,
+    device,
+    MAX(account_status) AS account_status,
+    MAX(campaign_status) AS campaign_status,
+    MAX(adgroup_status) AS adgroup_status,
+    MAX(ad_status) AS ad_status,
+    MAX(impressions) AS impressions,
+    MAX(clicks) AS clicks,
+    MAX(cost) AS cost
+  FROM landing
+  GROUP BY
+    ad_id,
+    date_id,
+    device
 )
 SELECT 
   l, w,
@@ -82,7 +100,7 @@ SELECT
     ELSE "NO_ACTION"
   END disposition,
   CURRENT_TIMESTAMP() AS exec_timestamp
-FROM landing l
+FROM landing_dedupt l
 LEFT JOIN warehouse w ON
   l.ad_id = w.ad_id AND
   l.date_id = w.date_id AND
